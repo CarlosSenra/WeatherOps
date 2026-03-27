@@ -1,0 +1,16 @@
+[project]
+name = "weatherops"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Carlos Rafael Senra Brito"}
+]
+requires-python = ">=3.12"
+dependencies = [
+    "dvc (>=3.67.0,<4.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

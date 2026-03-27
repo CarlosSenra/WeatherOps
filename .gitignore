@@ -205,3 +205,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+#Data
+/data
+
+# DVC - Arquivos internos e Cache
+.dvc/cache/
+.dvc/tmp/
+
+# Configurações locais 
+.dvc/config.local
+
+dvc.log
