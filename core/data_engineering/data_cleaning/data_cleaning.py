@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import List, Union 
-from .interface.i_data_eng import IDataCleaning
-from .inputs.csv_path_input import DataEngInput
+from ..interface.i_data_eng import IDataCleaning
+from ..inputs.csv_path_input import DataEngInput
 
 class DataCleaning(IDataCleaning):
     def __init__(self, csv_paths:Union[str, List[str]]):
