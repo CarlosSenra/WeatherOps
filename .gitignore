@@ -217,3 +217,5 @@ __marimo__/
 .dvc/config.local
 
 dvc.log
+
+src/data/logs/*

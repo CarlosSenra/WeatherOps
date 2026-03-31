@@ -63,4 +63,11 @@ class DataCleaning(IDataCleaning):
 
     def concat_csv(self) -> pd.DataFrame:
         return pd.concat(self.raw_dataframes)
+
+    def save_csv(self, df:pd.DataFrame, path_csv_save:str) -> bool:
+        try:
+            df.to_csv(path_csv_save, index=False)
+            return True
+        except:
+            return False
             

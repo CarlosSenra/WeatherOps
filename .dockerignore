@@ -1,0 +1,9 @@
+# Ignorar arquivos de log do Airflow
+**/logs/
+
+# Ignorar outras pastas pesadas ou desnecessárias para o build
+**/__pycache__/
+**/.venv/
+**/.vscode/
+.git/
+.dvc/
