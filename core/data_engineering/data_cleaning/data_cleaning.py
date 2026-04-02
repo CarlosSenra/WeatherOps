@@ -107,18 +107,9 @@ class DataCleaning(IDataCleaning):
 
     def process_data(self) -> List[pd.DataFrame]:
         """Aplica a transformação em toda a lista de dataframes."""
-        self.raw_dataframes = [
-            self._cleaning_str_data_hours_columns(df)
-            for df in self.raw_dataframes
-        ]
-        self.raw_dataframes = [
-            self._convert_str_to_numeric(df)
-            for df in self.raw_dataframes
-        ]
-        self.raw_dataframes = [
-            self._rename_all_columns(df)
-            for df in self.raw_dataframes
-        ]
+        self.raw_dataframes = [ self._cleaning_str_data_hours_columns(df) for df in self.raw_dataframes]
+        self.raw_dataframes = [self._convert_str_to_numeric(df) for df in self.raw_dataframes]
+        self.raw_dataframes = [self._rename_all_columns(df) for df in self.raw_dataframes]
         return self.raw_dataframes
 
     def concat_csv(self) -> pd.DataFrame:
