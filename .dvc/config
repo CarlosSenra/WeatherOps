@@ -1,5 +1,6 @@
 [core]
     remote = meu_armazenamento_local
+    autostage = true
 [cache]
     type = "hardlink,symlink"
 ['remote "meu_armazenamento_local"']
