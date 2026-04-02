@@ -12,6 +12,7 @@ RUN apt-get update \
 USER airflow
 
 RUN pip install --no-cache-dir poetry==2.3.2
+
 RUN poetry config virtualenvs.create false
 
 WORKDIR /opt/project
@@ -21,4 +22,4 @@ COPY --chown=airflow:root pyproject.toml poetry.lock* /opt/project/
 COPY --chown=airflow:root core/ /opt/project/core/
 COPY --chown=airflow:root src/ /opt/project/src/
 
-RUN poetry install --no-interaction --no-ansi --no-root
+RUN poetry install --no-interaction --no-ansi --only main
