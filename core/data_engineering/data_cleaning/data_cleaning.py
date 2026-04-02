@@ -1,13 +1,13 @@
 import pandas as pd
 from typing import List, Union 
 from ..interface.i_data_eng import IDataCleaning
-from ..models.inputs import (
+from ..models.data_cleaning.inputs import (
     DataEngInput,
     CsvReadConfig,
     DataConversionConfig,
     ColumnRenameConfig,
 )
-from ..models.outputs import DataCleaningProcessOutput
+from ..models.data_cleaning.outputs import DataCleaningProcessOutput
 
 
 class DataCleaning(IDataCleaning):
