@@ -1,0 +1,27 @@
+{
+    "experiment_name": "weather_forecasting",
+    "run_name": "transformer_baseline",
+    "epochs": 50,
+    "batch_size": 64,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.0001,
+    "early_stopping_patience": 7,
+    "checkpoint_dir": "/app/artifacts",
+    "device": "cpu",
+    "data": {
+        "parquet_path": "/app/data/spec",
+        "target_columns": ["temp_ar_c"],
+        "sequence_length": 24,
+        "horizon": 1,
+        "train_ratio": 0.8,
+        "val_ratio": 0.1
+    },
+    "model": {
+        "model_type": "transformer",
+        "hidden_size": 128,
+        "num_layers": 2,
+        "num_heads": 4,
+        "ffn_dim": 256,
+        "dropout": 0.1
+    }
+}
