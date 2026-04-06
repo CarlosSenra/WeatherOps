@@ -1,0 +1,43 @@
+services:
+
+  # ── Treinamento ─────────────────────────────────────────────────────────────
+  trainer:
+    build:
+      context: ../..          # raiz do projeto (WeatherOps/)
+      dockerfile: src/ml_workstation/Dockerfile
+    image: weatherops-ml:latest
+    container_name: weatherops-trainer
+    environment:
+      MLFLOW_TRACKING_URI: file:///app/mlruns
+      GIT_PYTHON_REFRESH: quiet
+    volumes:
+      # Dados de entrada (somente leitura)
+      - ../../data/spec:/app/data/spec:ro
+      # Checkpoints do melhor modelo
+      - ./artifacts:/app/artifacts
+      # Experimentos MLflow (compartilhado com o serviço mlflow-ui)
+      - ./mlruns:/app/mlruns
+      # Arquivos JSON de configuração de runs
+      - ./experiments:/app/experiments
+    # Uso padrão (defaults do TrainingConfig):
+    #   docker compose run trainer
+    # Com arquivo de config:
+    #   docker compose run trainer --config /app/experiments/lstm_24h.json
+    profiles:
+      - train
+
+  # ── MLflow UI ───────────────────────────────────────────────────────────────
+  mlflow-ui:
+    image: python:3.12-slim
+    container_name: weatherops-mlflow-ui
+    command: >
+      bash -c "pip install mlflow --quiet &&
+               mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri file:///app/mlruns"
+    ports:
+      - "5000:5000"
+    volumes:
+      # Lê os mesmos runs gerados pelo trainer
+      - ./mlruns:/app/mlruns
+    restart: unless-stopped
+    profiles:
+      - ui
