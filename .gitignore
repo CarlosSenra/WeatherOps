@@ -219,3 +219,9 @@ __marimo__/
 dvc.log
 
 src/data/logs/*
+
+src/ml_workflow/mlruns/*
+
+# ML Workstation — artefatos gerados localmente
+src/ml_workstation/mlruns/
+src/ml_workstation/artifacts/
