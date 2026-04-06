@@ -4,7 +4,7 @@
 
 Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/` com **29 testes** organizados em **8 classes de teste**.
 
-**Status:** ✅ **TODOS OS 29 TESTES PASSANDO**
+**Status:**  **TODOS OS 29 TESTES PASSANDO**
 
 ---
 
@@ -21,7 +21,7 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 | TestWeatherFeatureEngineerMovingAverage | 2 | Médias móveis |
 | TestWeatherFeatureEngineerTrendFeatures | 2 | Features de tendência |
 | TestWeatherFeatureEngineerIntegration | 3 | Testes de integração |
-| **TOTAL** | **29** | ✅ |
+| **TOTAL** | **29** |  |
 
 ---
 
@@ -31,15 +31,15 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Validar inicialização do WeatherFeatureEngineer
 
-- ✅ **test_init_with_default_config**
+-  **test_init_with_default_config**
   - Verifica inicialização com config padrão
   - Valida atributos: original_num_features=None, input_info=None
 
-- ✅ **test_init_with_custom_config**
+-  **test_init_with_custom_config**
   - Verifica inicialização com config customizada
   - Valida retenção de configurações customizadas
 
-- ✅ **test_init_config_not_none**
+-  **test_init_config_not_none**
   - Verifica que config é uma instância válida
 
 ---
@@ -48,35 +48,35 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Validar transformação completa de features
 
-- ✅ **test_transform_basic**
+-  **test_transform_basic**
   - Validação básica de transformação
   - Verifica tipo, não-vazio e índice datetime
 
-- ✅ **test_transform_creates_seasonal_features**
+-  **test_transform_creates_seasonal_features**
   - Verifica criação de hora_sin e hora_cos
   - Valida features cíclicas baseadas em hora do dia
 
-- ✅ **test_transform_creates_lag_features**
+-  **test_transform_creates_lag_features**
   - Verifica criação de temp_lag_1h e temp_lag_24h
   - Valida memory do passado
 
-- ✅ **test_transform_creates_moving_avg_features**
+-  **test_transform_creates_moving_avg_features**
   - Verifica criação de médias móveis para temp e pressão
   - Valida janelas de 6h e 12h
 
-- ✅ **test_transform_creates_trend_features**
+-  **test_transform_creates_trend_features**
   - Verifica criação de tendências (diff 1h)
   - Valida detecção de mudanças
 
-- ✅ **test_transform_removes_nan_by_default**
+-  **test_transform_removes_nan_by_default**
   - Verifica remoção automática de NaN
   - Valida comportamento padrão (remove_nan=True)
 
-- ✅ **test_transform_keeps_nan_if_configured**
+-  **test_transform_keeps_nan_if_configured**
   - Verifica manutenção de NaN se configurado
   - Valida comportamento customizado (remove_nan=False)
 
-- ✅ **test_transform_filters_target_columns**
+-  **test_transform_filters_target_columns**
   - Verifica que apenas colunas alvo são usadas
   - Valida remoção de colunas não-alvo
 
@@ -86,15 +86,15 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Validar validação de entrada
 
-- ✅ **test_validate_input_basic**
+-  **test_validate_input_basic**
   - Verifica validação básica
   - Retorna WeatherFeatureEngineerInput válido
 
-- ✅ **test_validate_input_stores_info**
+-  **test_validate_input_stores_info**
   - Verifica armazenamento em input_info
   - Valida coluna data_hora reconhecida
 
-- ✅ **test_validate_input_columns_stored**
+-  **test_validate_input_columns_stored**
   - Verifica armazenamento de todas as colunas
   - Valida integridade da informação
 
@@ -104,11 +104,11 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Validar geração de metadados de saída
 
-- ✅ **test_get_output_info_basic**
+-  **test_get_output_info_basic**
   - Verifica obtenção de output info
   - Valida tipo WeatherFeatureEngineerOutput
 
-- ✅ **test_get_output_info_dtypes**
+-  **test_get_output_info_dtypes**
   - Verifica dicionário de tipos de dados
   - Valida presença e valores corretos
 
@@ -118,11 +118,11 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Validar features sazonais (sine/cosine)
 
-- ✅ **test_seasonal_features_sine_cosine_values**
+-  **test_seasonal_features_sine_cosine_values**
   - Verifica que sin e cos estão em [-1, 1]
   - Valida intervalo trigonométrico
 
-- ✅ **test_seasonal_features_relationships**
+-  **test_seasonal_features_relationships**
   - Verifica sin²(x) + cos²(x) = 1
   - Valida relação matemática fundamental
 
@@ -132,11 +132,11 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Validar features com lag
 
-- ✅ **test_lag_features_shift_correctly**
+-  **test_lag_features_shift_correctly**
   - Verifica deslocamento correto dos valores
   - Valida que lag_1h = valor anterior
 
-- ✅ **test_lag_features_different_hours**
+-  **test_lag_features_different_hours**
   - Verifica lags com diferentes períodos: 2h, 12h, 48h
   - Valida configuração dinâmica
 
@@ -146,11 +146,11 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Validar médias móveis
 
-- ✅ **test_moving_avg_values_valid**
+-  **test_moving_avg_values_valid**
   - Verifica que MA está dentro do intervalo original
   - Valida lower_bound ≥ original_min e upper_bound ≤ original_max
 
-- ✅ **test_moving_avg_first_values**
+-  **test_moving_avg_first_values**
   - Verifica que primeiro valor tem MA (min_periods=1)
   - Valida cálculo com dados limitados
 
@@ -160,11 +160,11 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Validar features de tendência
 
-- ✅ **test_trend_features_calculated**
+-  **test_trend_features_calculated**
   - Verifica criação de tendências
   - Valida presença de pressao_tendencia_1h e temp_tendencia_1h
 
-- ✅ **test_trend_features_represent_changes**
+-  **test_trend_features_represent_changes**
   - Verifica que tendências são numéricas (após dropna)
   - Valida cálculo de diferenciação
 
@@ -174,11 +174,11 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 **Finalidade:** Testes de integração completa
 
-- ✅ **test_full_pipeline_single_transform**
+-  **test_full_pipeline_single_transform**
   - Pipeline completo: transform → get_output_info
   - Valida: output.num_columns > output.original_features
 
-- ✅ **test_full_pipeline_with_validation**
+-  **test_full_pipeline_with_validation**
   - Pipeline: validate_input → transform → get_output_info
   - Valida integração de todos os componentes
 
@@ -188,16 +188,16 @@ Suite completa de testes para o módulo `core/data_engineering/data_feature_eng/
 
 | Funcionalidade | Testes | Status |
 |---|---|---|
-| Inicialização | 3 | ✅ |
-| Transformação básica | 8 | ✅ |
-| Validação de entrada | 3 | ✅ |
-| Metadados de saída | 2 | ✅ |
-| Features sazonais | 2 | ✅ |
-| Features com lag | 2 | ✅ |
-| Médias móveis | 2 | ✅ |
-| Features de tendência | 2 | ✅ |
-| Integração completa | 3 | ✅ |
-| **TOTAL** | **29** | ✅ |
+| Inicialização | 3 |  |
+| Transformação básica | 8 |  |
+| Validação de entrada | 3 |  |
+| Metadados de saída | 2 |  |
+| Features sazonais | 2 |  |
+| Features com lag | 2 |  |
+| Médias móveis | 2 |  |
+| Features de tendência | 2 |  |
+| Integração completa | 3 |  |
+| **TOTAL** | **29** |  |
 
 ---
 
@@ -281,23 +281,23 @@ test_feature_eng.py (29 testes, ~400 linhas)
 ## Cobertura de Cenários
 
 ### Positive Tests (28)
-- ✅ Inicialização com configs padrão e custom
-- ✅ Transformações de cada tipo de feature
-- ✅ Validação e output info
-- ✅ Integração completa
+-  Inicialização com configs padrão e custom
+-  Transformações de cada tipo de feature
+-  Validação e output info
+-  Integração completa
 
 ### Negative Tests (1)
-- ✅ Erro quando colunas alvo faltam
+-  Erro quando colunas alvo faltam
 
 ---
 
 ## Padrões Aplicados
 
-✅ **Arrange-Act-Assert** - Estrutura clara em cada teste
-✅ **Isolamento** - Cada teste usa fixtures próprias
-✅ **Nomenclatura Clara** - Nomes descritivos
-✅ **Dados Realistas** - Série temporal simulada
-✅ **Cobertura Completa** - Todos os métodos públicos
+ **Arrange-Act-Assert** - Estrutura clara em cada teste
+ **Isolamento** - Cada teste usa fixtures próprias
+ **Nomenclatura Clara** - Nomes descritivos
+ **Dados Realistas** - Série temporal simulada
+ **Cobertura Completa** - Todos os métodos públicos
 
 ---
 
@@ -314,4 +314,4 @@ test_feature_eng.py (29 testes, ~400 linhas)
 
 **Data de Criação**: 2026-04-03  
 **Total de Testes**: 29  
-**Taxa de Sucesso**: 100% ✅
+**Taxa de Sucesso**: 100% 
