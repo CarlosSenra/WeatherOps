@@ -1,0 +1,25 @@
+{
+    "experiment_name": "weather_forecasting",
+    "run_name": "lstm_h168_v2",
+    "epochs": 15,
+    "batch_size": 24,
+    "learning_rate": 0.0009,
+    "weight_decay": 0.0001,
+    "early_stopping_patience": 5,
+    "checkpoint_dir": "/app/artifacts",
+    "device": "cpu",
+    "data": {
+        "parquet_path": "/app/data/spec",
+        "target_columns": ["temp_ar_c"],
+        "sequence_length": 420,
+        "horizon": 168,
+        "train_ratio": 0.8,
+        "val_ratio": 0.1
+    },
+    "model": {
+        "model_type": "lstm",
+        "hidden_size": 160,
+        "num_layers": 2,
+        "dropout": 0.15
+    }
+}
