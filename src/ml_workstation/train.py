@@ -6,20 +6,20 @@ Uso:
     python -m src.ml_workstation.train
 
     # Com arquivo de configuração JSON:
-    python -m src.ml_workstation.train --config experiments/lstm_24h.json
+    python -m src.ml_workstation.train --config experiments/lstm/lstm_h72_v1.json
 
-    # Exemplo de configuração JSON (experiments/lstm_24h.json):
+    # Exemplo de configuração JSON (experiments/lstm/lstm_h72_v1.json):
     {
-        "experiment_name": "weather_forecasting",
-        "run_name": "lstm_24h_baseline",
-        "epochs": 50,
+        "experiment_name": "weather_forecasting_h72",
+        "run_name": "lstm_h72_v1",
+        "epochs": 80,
         "batch_size": 64,
         "device": "cpu",
         "data": {
             "parquet_path": "data/spec",
             "target_columns": ["temp_ar_c"],
-            "sequence_length": 24,
-            "horizon": 1
+            "sequence_length": 168,
+            "horizon": 72
         },
         "model": {
             "model_type": "lstm",

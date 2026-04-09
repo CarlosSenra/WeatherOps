@@ -46,4 +46,4 @@ ENV PYTHONPATH=/app
 
 ENTRYPOINT ["python", "-m", "src.ml_workstation.train"]
 # Uso padrão: docker run ... (usa defaults do TrainingConfig)
-# Com config:  docker run ... --config /app/experiments/lstm_24h.json
+# Com config:  docker run ... --config /app/experiments/lstm/lstm_h72_v1.json

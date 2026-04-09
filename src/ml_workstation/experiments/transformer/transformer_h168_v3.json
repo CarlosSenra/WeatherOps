@@ -1,0 +1,36 @@
+{
+  "experiment_name": "weather_forecasting_h168",
+  "run_name": "transformer_h168_v3",
+  "epochs": 80,
+  "batch_size": 24,
+  "learning_rate": 0.002,
+  "weight_decay": 0.0001,
+  "early_stopping_patience": 5,
+  "checkpoint_dir": "/app/artifacts",
+  "device": "cpu",
+  "data": {
+    "parquet_path": "/app/data/spec",
+    "target_columns": [
+      "temp_ar_c"
+    ],
+    "sequence_length": 504,
+    "horizon": 168,
+    "train_ratio": 0.8,
+    "val_ratio": 0.1
+  },
+  "model": {
+    "hidden_size": 224,
+    "num_layers": 4,
+    "dropout": 0.18,
+    "num_heads": 8,
+    "ffn_dim": 896,
+    "model_type": "transformer"
+  },
+  "governance": {
+    "model_name": "weather_transformer_h168",
+    "model_version": "3.0.0",
+    "model_type": "regression",
+    "risk_level": "medium",
+    "fairness_checked": false
+  }
+}

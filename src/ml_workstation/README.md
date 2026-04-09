@@ -33,8 +33,16 @@ src/ml_workstation/
 ├── train.py                     # Entrypoint de treinamento
 │
 ├── experiments/                 # Configs JSON dos runs (volume)
-│   ├── lstm_baseline.json
-│   └── transformer_baseline.json
+│   ├── lstm/
+│   │   ├── lstm_h72_v1.json ... lstm_h72_v6.json
+│   │   ├── lstm_h168_v1.json ... lstm_h168_v6.json
+│   │   ├── lstm_h336_v1.json ... lstm_h336_v6.json
+│   │   ├── lstm_smoke_test.json
+│   │   └── lstm_smoke_test_cuda.json
+│   └── transformer/
+│       ├── transformer_h72_v1.json ... transformer_h72_v6.json
+│       ├── transformer_h168_v1.json ... transformer_h168_v6.json
+│       └── transformer_h336_v1.json ... transformer_h336_v6.json
 │
 ├── artifacts/                   # Checkpoints do melhor modelo (volume)
 └── mlruns/                      # Experimentos MLflow (volume)
@@ -68,26 +76,29 @@ docker compose --profile train build
 ### Treinar
 
 ```bash
-# Smoke test — 3 épocas, rápido para validar o setup
-docker compose --profile train run --rm trainer --config //app/experiments/lstm_smoke_test.json
+# Smoke test — rápido para validar o setup
+docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_smoke_test.json
 
-# LSTM 
-docker compose --profile train run --rm trainer --config //app/experiments/lstm_baseline.json
-docker compose --profile train run --rm trainer --config //app/experiments/lstm_h72.json
-docker compose --profile train run --rm trainer --config //app/experiments/lstm_h72_v2.json
-docker compose --profile train run --rm trainer --config //app/experiments/lstm_h168.json
-docker compose --profile train run --rm trainer --config //app/experiments/lstm_h168_v2.json
-docker compose --profile train run --rm trainer --config //app/experiments/lstm_h336.json
-docker compose --profile train run --rm trainer --config //app/experiments/lstm_h336_v2.json
+# Exemplos LSTM
+docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h72_v1.json
+docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h168_v3.json
+docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h336_v6.json
 
-# Transformer 
-docker compose --profile train run --rm trainer --config //app/experiments/transformer_baseline.json
-docker compose --profile train run --rm trainer --config //app/experiments/transformer_h72.json
-docker compose --profile train run --rm trainer --config //app/experiments/transformer_h72_v2.json
-docker compose --profile train run --rm trainer --config //app/experiments/transformer_h168.json
-docker compose --profile train run --rm trainer --config //app/experiments/transformer_h168_v2.json
-docker compose --profile train run --rm trainer --config //app/experiments/transformer_h336.json
-docker compose --profile train run --rm trainer --config //app/experiments/transformer_h336_v2.json
+# Exemplos Transformer
+docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h72_v2.json
+docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h168_v4.json
+docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h336_v6.json
+
+# Execução em lote (6 versões) por horizonte
+for v in 1 2 3 4 5 6; do
+    docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h72_v${v}.json
+    docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h168_v${v}.json
+    docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h336_v${v}.json
+done
+
+for v in 1 2 3 4 5 6; do
+    docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h168_v${v}.json
+done
 ```
 
 ### Treinar com CUDA (GPU)
@@ -103,14 +114,21 @@ docker compose --profile train-gpu run --rm --entrypoint python trainer-gpu -c "
 2. Smoke test em CUDA:
 
 ```bash
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_smoke_test_cuda.json
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/transformer_baseline.json
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h72.json
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h72_v2.json
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h168.json
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h168_v2.json
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h336.json
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h336_v2.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm/lstm_smoke_test_cuda.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm/lstm_h72_v1.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/transformer/transformer_h72_v1.json
+
+# Exemplo em lote no GPU (h336)
+for v in 1 2 3 4 5 6; do
+  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h72_v${v}.json"
+  echo //app/experiments/lstm/lstm_h72_v${v}.json
+
+  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h168_v${v}.json"
+  echo //app/experiments/lstm/lstm_h168_v${v}.json
+
+  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h336_v${v}.json"
+  echo //app/experiments/lstm/lstm_h336_v${v}.json
+done
 
 ```
 
@@ -173,12 +191,12 @@ Acesse `http://localhost:5000` no navegador. Os runs ficam salvos em `mlruns/` e
 
 ## Criar um novo experimento
 
-Crie um arquivo JSON em `experiments/` baseado nos exemplos existentes e passe via `--config`:
+Crie um arquivo JSON em `experiments/lstm/` ou `experiments/transformer/` baseado nos exemplos existentes e passe via `--config`:
 
 ```json
 {
-    "experiment_name": "weather_forecasting",
-    "run_name": "meu_experimento",
+    "experiment_name": "weather_forecasting_h72",
+    "run_name": "lstm_h72_v7",
     "epochs": 50,
     "batch_size": 64,
     "data": {
