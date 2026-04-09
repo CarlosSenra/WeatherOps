@@ -1,9 +1,9 @@
 {
     "experiment_name": "weather_forecasting",
     "run_name": "transformer_h168_v2",
-    "epochs": 15,
+    "epochs": 65,
     "batch_size": 32,
-    "learning_rate": 0.0002,
+    "learning_rate": 0.0011,
     "weight_decay": 0.0001,
     "early_stopping_patience": 5,
     "checkpoint_dir": "/app/artifacts",
@@ -23,5 +23,12 @@
         "num_heads": 6,
         "ffn_dim": 768,
         "dropout": 0.15
+    },
+    "governance": {
+        "model_name": "weather_transformer_h168",
+        "model_version": "2.0.0",
+        "model_type": "regression",
+        "risk_level": "medium",
+        "fairness_checked": false
     }
 }

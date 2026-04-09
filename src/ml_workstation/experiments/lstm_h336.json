@@ -1,9 +1,9 @@
 {
     "experiment_name": "weather_forecasting",
     "run_name": "lstm_h336",
-    "epochs": 15,
+    "epochs": 70,
     "batch_size": 16,
-    "learning_rate": 0.0008,
+    "learning_rate": 0.0013,
     "weight_decay": 0.0001,
     "early_stopping_patience": 5,
     "checkpoint_dir": "/app/artifacts",
@@ -21,5 +21,12 @@
         "hidden_size": 256,
         "num_layers": 3,
         "dropout": 0.2
+    },
+    "governance": {
+        "model_name": "weather_lstm_h336",
+        "model_version": "1.0.0",
+        "model_type": "regression",
+        "risk_level": "medium",
+        "fairness_checked": false
     }
 }

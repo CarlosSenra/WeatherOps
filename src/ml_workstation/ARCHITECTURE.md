@@ -41,6 +41,13 @@ TrainingConfig
 │   ├── train_ratio = 0.80    → proporção para treino
 │   └── val_ratio   = 0.10    → proporção para validação (restante = teste)
 │
+├── governance: GovernanceConfig
+│   ├── model_name, model_version, model_type
+│   ├── owner              → e-mail do responsável (config ou .env)
+│   ├── risk_level, fairness_checked
+│   ├── training_data_version → hash/versionamento dos dados
+│   └── git_sha            → commit do código
+│
 └── model: ModelConfig
     ├── model_type: "lstm" | "transformer"
     ├── hidden_size, num_layers, dropout
@@ -171,11 +178,14 @@ tracker.start_run()
 # └── mlflow.set_experiment(experiment_name)
 # └── mlflow.start_run(run_name)
 # └── mlflow.log_params(config.model_dump())  ← config completo de uma vez
+# └── mlflow.set_tags(governance)              ← metadados de governança
+# └── mlflow.log_params(governance.*)          ← governança também como params
 
     # a cada época:
     tracker.log_epoch_metrics({"train_loss": ..., "val_loss": ..., "mae": ..., "rmse": ...}, epoch)
 
 # ao final:
+tracker.log_governance_metrics(...)       # snapshot final prefixado como governance_metric.*
 tracker.log_artifact(checkpoint_path)   # arquivo .pt do melhor modelo
 tracker.log_model(model)                # modelo PyTorch registrado no MLflow
 tracker.end_run()
@@ -221,6 +231,7 @@ TrainerOutput(
     best_val_loss=0.0043,
     checkpoint_path="artifacts/lstm_baseline/best_model.pt",
     total_epochs_run=19,
+    final_metrics={"train_loss": ..., "val_loss": ..., "mae": ..., "rmse": ..., "mape": ...},
 )
 ```
 
@@ -229,10 +240,14 @@ TrainerOutput(
 ```
 MAE  = mean(|y_pred - y_true|)
 RMSE = sqrt(mean((y_pred - y_true)²))
-MAPE = mean(|y_pred - y_true| / |y_true|) × 100    (ignora zeros)
+MAPE = mean(|y_pred - y_true| / max(|y_true|, epsilon)) × 100
 ```
 
-Calculadas sobre `y_pred` e `y_true` já em escala normalizada.
+Observações importantes:
+- `compute_metrics()` calcula MAE/RMSE na escala recebida.
+- `compute_mape()` usa `epsilon` no denominador para estabilizar quando `y_true` está próximo de zero.
+- No `Trainer`, o MAPE principal (`mape`) é recalculado após desfazer a normalização do alvo (escala original).
+- O MAPE na escala normalizada é mantido como métrica auxiliar `mape_scaled`.
 
 ---
 
@@ -245,6 +260,9 @@ config = TrainingConfig.model_validate(json.load(...))
 # 2. Dados
 loader = ParquetDataLoader(config.data)
 train_loader, val_loader, test_loader, data_output = loader.build(batch_size=config.batch_size)
+target_indices = [config.data.feature_columns.index(c) for c in config.data.target_columns]
+target_mean = loader.scaler.mean_[target_indices]
+target_scale = loader.scaler.scale_[target_indices]
 
 # 3. Modelo
 model = build_model(data_output.n_features, data_output.n_targets, config.data.horizon, config.model)
@@ -254,7 +272,15 @@ tracker = MLflowTracker(config)
 tracker.start_run()
 
 # 5. Treino
-trainer = Trainer(model, train_loader, val_loader, config, tracker)
+trainer = Trainer(
+    model,
+    train_loader,
+    val_loader,
+    config,
+    tracker,
+    target_mean=target_mean,
+    target_scale=target_scale,
+)
 result  = trainer.fit()
 
 # 6. Artefatos

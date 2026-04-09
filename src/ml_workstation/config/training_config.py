@@ -104,6 +104,55 @@ class ModelConfig(BaseModel):
         }
 
 
+class GovernanceConfig(BaseModel):
+    """Metadados de governança para rastreabilidade de modelos no MLflow."""
+
+    model_name: str = Field(
+        default="weather_forecaster",
+        description="Nome lógico do modelo para governança"
+    )
+    model_version: str = Field(
+        default="0.1.0",
+        description="Versão semântica do modelo"
+    )
+    model_type: Literal["classification", "regression", "generation"] = Field(
+        default="regression",
+        description="Tipo de tarefa do modelo (governança)"
+    )
+    owner: Optional[str] = Field(
+        default=None,
+        description="Responsável pelo modelo (normalmente e-mail)"
+    )
+    risk_level: Literal["low", "medium", "high", "critical"] = Field(
+        default="medium",
+        description="Nível de risco do modelo"
+    )
+    fairness_checked: bool = Field(
+        default=False,
+        description="Indica se auditoria de viés foi realizada"
+    )
+    training_data_version: Optional[str] = Field(
+        default=None,
+        description="Versão/hash dos dados de treino (preenchido automaticamente se ausente)"
+    )
+    git_sha: Optional[str] = Field(
+        default=None,
+        description="Commit SHA do código (preenchido automaticamente se ausente)"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "model_name": "weather_lstm_h72",
+                "model_version": "1.0.0",
+                "model_type": "regression",
+                "owner": "owner@example.com",
+                "risk_level": "medium",
+                "fairness_checked": False,
+            }
+        }
+
+
 class TrainingConfig(BaseModel):
     """Configuração completa de treinamento, compondo DataConfig e ModelConfig."""
 
@@ -151,6 +200,10 @@ class TrainingConfig(BaseModel):
         default_factory=ModelConfig,
         description="Configuração do modelo"
     )
+    governance: GovernanceConfig = Field(
+        default_factory=GovernanceConfig,
+        description="Metadados de governança para tracking no MLflow"
+    )
 
     class Config:
         json_schema_extra = {
@@ -166,5 +219,12 @@ class TrainingConfig(BaseModel):
                 "device": "cpu",
                 "data": {"parquet_path": "data/spec", "target_columns": ["temp_ar_c"]},
                 "model": {"model_type": "lstm", "hidden_size": 128},
+                "governance": {
+                    "model_name": "weather_lstm_baseline",
+                    "model_version": "1.0.0",
+                    "model_type": "regression",
+                    "risk_level": "medium",
+                    "fairness_checked": False,
+                },
             }
         }

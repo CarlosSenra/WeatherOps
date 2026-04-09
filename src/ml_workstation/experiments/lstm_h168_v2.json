@@ -1,9 +1,9 @@
 {
     "experiment_name": "weather_forecasting",
     "run_name": "lstm_h168_v2",
-    "epochs": 15,
+    "epochs": 55,
     "batch_size": 24,
-    "learning_rate": 0.0009,
+    "learning_rate": 0.0016,
     "weight_decay": 0.0001,
     "early_stopping_patience": 5,
     "checkpoint_dir": "/app/artifacts",
@@ -21,5 +21,12 @@
         "hidden_size": 160,
         "num_layers": 2,
         "dropout": 0.15
+    },
+    "governance": {
+        "model_name": "weather_lstm_h168",
+        "model_version": "2.0.0",
+        "model_type": "regression",
+        "risk_level": "medium",
+        "fairness_checked": false
     }
 }

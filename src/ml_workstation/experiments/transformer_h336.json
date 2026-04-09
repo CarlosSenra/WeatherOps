@@ -1,9 +1,9 @@
 {
     "experiment_name": "weather_forecasting",
     "run_name": "transformer_h336",
-    "epochs": 15,
+    "epochs": 80,
     "batch_size": 16,
-    "learning_rate": 0.0002,
+    "learning_rate": 0.001,
     "weight_decay": 0.0001,
     "early_stopping_patience": 5,
     "checkpoint_dir": "/app/artifacts",
@@ -23,5 +23,12 @@
         "num_heads": 8,
         "ffn_dim": 1024,
         "dropout": 0.2
+    },
+    "governance": {
+        "model_name": "weather_transformer_h336",
+        "model_version": "1.0.0",
+        "model_type": "regression",
+        "risk_level": "medium",
+        "fairness_checked": false
     }
 }

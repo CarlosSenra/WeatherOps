@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 from src.ml_workstation.config.training_config import TrainingConfig
 from src.ml_workstation.models.interface import ITimeSeriesModel
-from src.ml_workstation.training.metrics import compute_metrics
+from src.ml_workstation.training.metrics import compute_mape, compute_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class TrainerOutput(BaseModel):
     best_val_loss: float
     checkpoint_path: str
     total_epochs_run: int
+    final_metrics: dict[str, float]
 
 
 class Trainer:
@@ -38,12 +39,16 @@ class Trainer:
         val_loader: DataLoader,
         config: TrainingConfig,
         tracker,
+        target_mean: np.ndarray | None = None,
+        target_scale: np.ndarray | None = None,
     ):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.config = config
         self.tracker = tracker
+        self.target_mean = target_mean
+        self.target_scale = target_scale
 
         self.device = torch.device(config.device)
         self.model.to(self.device)
@@ -64,6 +69,7 @@ class Trainer:
         best_val_loss = float("inf")
         best_epoch = 0
         patience_counter = 0
+        final_metrics: dict[str, float] = {}
 
         for epoch in range(1, self.config.epochs + 1):
             train_loss = self._train_epoch()
@@ -71,6 +77,7 @@ class Trainer:
             val_loss = val_metrics["val_loss"]
 
             metrics = {"train_loss": train_loss, **val_metrics}
+            final_metrics = metrics
             self.tracker.log_epoch_metrics(metrics, epoch)
 
             logger.info(
@@ -104,6 +111,7 @@ class Trainer:
             best_val_loss=best_val_loss,
             checkpoint_path=str(self.checkpoint_path),
             total_epochs_run=epoch,
+            final_metrics=final_metrics,
         )
 
     def _train_epoch(self) -> float:
@@ -139,6 +147,16 @@ class Trainer:
         preds_arr = np.concatenate(all_preds, axis=0)
         targets_arr = np.concatenate(all_targets, axis=0)
         metrics = compute_metrics(preds_arr, targets_arr)
+
+        # O MAPE principal deve ser calculado na escala original do alvo.
+        if self.target_mean is not None and self.target_scale is not None:
+            mean = self.target_mean.reshape(1, 1, -1)
+            scale = self.target_scale.reshape(1, 1, -1)
+            preds_original = preds_arr * scale + mean
+            targets_original = targets_arr * scale + mean
+            metrics["mape_scaled"] = metrics["mape"]
+            metrics["mape"] = compute_mape(preds_original, targets_original)
+
         metrics["val_loss"] = val_loss
         return metrics
 

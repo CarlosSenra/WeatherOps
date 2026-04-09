@@ -74,12 +74,53 @@ docker compose --profile train run --rm trainer --config //app/experiments/lstm_
 # LSTM baseline — 50 épocas
 docker compose --profile train run --rm trainer --config //app/experiments/lstm_baseline.json
 
+##
+docker compose --profile train run --rm trainer --config //app/experiments/lstm_h72.json
+docker compose --profile train run --rm trainer --config //app/experiments/lstm_h72_v2.json
+docker compose --profile train run --rm trainer --config //app/experiments/lstm_h168.json
+docker compose --profile train run --rm trainer --config //app/experiments/lstm_h168_v2.json
+docker compose --profile train run --rm trainer --config //app/experiments/lstm_h336.json
+docker compose --profile train run --rm trainer --config //app/experiments/lstm_h336_v2.json
+
 # Transformer baseline
 docker compose --profile train run --rm trainer --config //app/experiments/transformer_baseline.json
+
+##
+docker compose --profile train run --rm trainer --config //app/experiments/transformer_h72.json
+docker compose --profile train run --rm trainer --config //app/experiments/transformer_h72_v2.json
+docker compose --profile train run --rm trainer --config //app/experiments/transformer_h168.json
+docker compose --profile train run --rm trainer --config //app/experiments/transformer_h168_v2.json
+docker compose --profile train run --rm trainer --config //app/experiments/transformer_h336.json
+docker compose --profile train run --rm trainer --config //app/experiments/transformer_h336_v2.json
 ```
 
 > **Atenção (Git Bash / Windows):** use `//app/...` (duas barras) ao passar caminhos do container.
 > O Git Bash expande `/app/...` para `C:/Program Files/Git/app/...` causando `FileNotFoundError`.
+
+### Governança no MLflow
+
+Cada treino agora registra metadados de governança em dois formatos:
+
+- **Tags MLflow** (`model_name`, `model_version`, `model_type`, `training_data_version`, `owner`, `risk_level`, `fairness_checked`, `git_sha`)
+- **Parâmetros MLflow** com prefixo `governance.*` (mesmos campos, para facilitar filtros)
+
+Campos de entrada manual no JSON do experimento (bloco `governance`):
+
+```json
+"governance": {
+    "model_name": "weather_lstm_h72",
+    "model_version": "1.0.0",
+    "model_type": "regression",
+    "risk_level": "medium",
+    "fairness_checked": false
+}
+```
+
+Campos preenchidos automaticamente no runtime:
+
+- `owner`: lido de `EMAIL` no ambiente (arquivo `.env` na raiz). Se ausente, usa `unknown`.
+- `training_data_version`: hash `md5` lido de `data.dvc`.
+- `git_sha`: commit atual via `git rev-parse HEAD`.
 
 ### Visualizar experimentos
 

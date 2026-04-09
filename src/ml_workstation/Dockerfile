@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM python:3.12-slim
 
 # ── Dependências de sistema ──────────────────────────────────────────────────
@@ -11,17 +12,22 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# ── Dependências do projeto ───────────────────────────────────────────────────
-COPY pyproject.toml /app/
-RUN pip install --no-cache-dir \
-        "pydantic>=2.12.5,<3.0.0" \
-        "plotly>=6.6.0,<7.0.0" \
-        "torch>=2.3.0,<3.0.0" \
-        "mlflow>=3.0.0,<4.0.0" \
-        "scikit-learn>=1.5.0,<2.0.0"
-# mlflow 3.0.0 declara pandas<3 no metadata mas funciona com pandas 3.
-# --no-deps ignora a restrição do metadata e força a versão correta.
-RUN pip install --no-cache-dir --no-deps "pandas>=3.0.1,<4.0.0"
+# ── Dependências do projeto (Poetry) ─────────────────────────────────────────
+ENV POETRY_VERSION=2.3.2
+ENV POETRY_HOME=/opt/poetry
+ENV POETRY_VIRTUALENVS_CREATE=false
+ENV POETRY_NO_INTERACTION=1
+ENV POETRY_SOLVER_LAZY_WHEEL=true
+ENV PATH="${POETRY_HOME}/bin:${PATH}"
+
+RUN pip install --no-cache-dir "poetry==${POETRY_VERSION}"
+
+COPY pyproject.toml poetry.lock /app/
+RUN poetry --version \
+    && poetry check --lock
+RUN --mount=type=cache,target=/root/.cache/pypoetry \
+    --mount=type=cache,target=/root/.cache/pip \
+    poetry install --only main --no-root
 
 # ── Código do projeto ─────────────────────────────────────────────────────────
 COPY core/ /app/core/

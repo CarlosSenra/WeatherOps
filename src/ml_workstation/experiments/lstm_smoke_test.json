@@ -1,11 +1,11 @@
 {
-    "experiment_name": "weather_forecasting",
+    "experiment_name": "weather_forecasting_smoke",
     "run_name": "lstm_smoke_test",
-    "epochs": 3,
-    "batch_size": 256,
+    "epochs": 2,
+    "batch_size": 128,
     "learning_rate": 0.001,
     "weight_decay": 0.0001,
-    "early_stopping_patience": 3,
+    "early_stopping_patience": 1,
     "checkpoint_dir": "/app/artifacts",
     "device": "cpu",
     "data": {
@@ -18,8 +18,15 @@
     },
     "model": {
         "model_type": "lstm",
-        "hidden_size": 64,
+        "hidden_size": 32,
         "num_layers": 1,
         "dropout": 0.0
+    },
+    "governance": {
+        "model_name": "weather_lstm_smoke_test",
+        "model_version": "0.1.0",
+        "model_type": "regression",
+        "risk_level": "low",
+        "fairness_checked": false
     }
 }

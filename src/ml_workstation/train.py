@@ -59,6 +59,10 @@ def main(config: TrainingConfig) -> None:
     train_loader, val_loader, test_loader, data_output = data_loader.build(
         batch_size=config.batch_size
     )
+    target_indices = [config.data.feature_columns.index(c) for c in config.data.target_columns]
+    target_mean = data_loader.scaler.mean_[target_indices]
+    target_scale = data_loader.scaler.scale_[target_indices]
+
     logger.info(
         "Dados carregados — treino: %d amostras, val: %d, teste: %d",
         data_output.num_train_samples,
@@ -81,7 +85,15 @@ def main(config: TrainingConfig) -> None:
 
     try:
         # 4. Treinamento
-        trainer = Trainer(model, train_loader, val_loader, config, tracker)
+        trainer = Trainer(
+            model,
+            train_loader,
+            val_loader,
+            config,
+            tracker,
+            target_mean=target_mean,
+            target_scale=target_scale,
+        )
         result = trainer.fit()
 
         logger.info(
@@ -90,6 +102,8 @@ def main(config: TrainingConfig) -> None:
             result.best_epoch,
             result.total_epochs_run,
         )
+
+        tracker.log_governance_metrics(result.final_metrics)
 
         # 5. Loga artefatos e modelo final
         if Path(result.checkpoint_path).exists():

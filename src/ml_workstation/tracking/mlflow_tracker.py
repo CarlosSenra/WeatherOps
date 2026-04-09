@@ -1,5 +1,9 @@
 import logging
+import os
+import re
+import subprocess
 import uuid
+from pathlib import Path
 
 import mlflow
 import mlflow.pytorch
@@ -34,9 +38,51 @@ class MLflowTracker:
         self._run = mlflow.start_run(run_name=run_name)
         logger.info("MLflow run iniciado: %s (id=%s)", run_name, self._run.info.run_id)
 
-        params = self.config.model_dump(mode="json")
-        flat_params = _flatten_dict(params)
+        params = self.config.model_dump(mode="json", exclude_none=True)
+        flat_params = {
+            k: v
+            for k, v in _flatten_dict(params).items()
+            if not k.startswith("governance.")
+        }
+        governance = self._build_governance_schema()
+
         mlflow.log_params(flat_params)
+
+        mlflow.set_tags(governance)
+        mlflow.log_params({f"governance.{k}": str(v) for k, v in governance.items()})
+
+    def log_governance_metrics(self, metrics: dict[str, float]) -> None:
+        """Loga métricas de governança (snapshot final) no run atual."""
+        if not metrics:
+            return
+
+        clean_metrics = {
+            f"governance_metric.{k}": float(v)
+            for k, v in metrics.items()
+            if isinstance(v, (int, float))
+        }
+        if clean_metrics:
+            mlflow.log_metrics(clean_metrics)
+
+    def _build_governance_schema(self) -> dict[str, str]:
+        """Monta o schema mínimo obrigatório para governança de modelo."""
+        owner = self.config.governance.owner or _read_email_from_environment() or "unknown"
+        git_sha = self.config.governance.git_sha or _read_git_sha()
+        data_version = (
+            self.config.governance.training_data_version or _read_data_dvc_hash() or "unknown"
+        )
+
+        schema = {
+            "model_name": self.config.governance.model_name,
+            "model_version": self.config.governance.model_version,
+            "model_type": self.config.governance.model_type,
+            "training_data_version": data_version,
+            "owner": owner,
+            "risk_level": self.config.governance.risk_level,
+            "fairness_checked": str(self.config.governance.fairness_checked).lower(),
+            "git_sha": git_sha,
+        }
+        return schema
 
     def log_epoch_metrics(self, metrics: dict[str, float], epoch: int) -> None:
         """
@@ -80,3 +126,51 @@ def _flatten_dict(d: dict, parent_key: str = "", sep: str = ".") -> dict[str, st
         else:
             items[new_key] = str(v)
     return items
+
+
+def _workspace_root() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
+def _read_git_sha() -> str:
+    try:
+        output = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=_workspace_root(),
+            text=True,
+        )
+        return output.strip()
+    except Exception:
+        return "unknown"
+
+
+def _read_data_dvc_hash() -> str | None:
+    dvc_file = _workspace_root() / "data.dvc"
+    if not dvc_file.exists():
+        return None
+
+    text = dvc_file.read_text(encoding="utf-8")
+    match = re.search(r"-\s*md5:\s*([^\s]+)", text)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _read_email_from_environment() -> str | None:
+    email = os.getenv("EMAIL")
+    if email:
+        return email.strip("\"'").strip() or None
+
+    env_path = _workspace_root() / ".env"
+    if not env_path.exists():
+        return None
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() == "EMAIL":
+            clean = value.strip().strip("\"'").strip()
+            return clean or None
+    return None

@@ -1,9 +1,9 @@
 {
     "experiment_name": "weather_forecasting",
     "run_name": "lstm_baseline",
-    "epochs": 50,
+    "epochs": 35,
     "batch_size": 64,
-    "learning_rate": 0.001,
+    "learning_rate": 0.003,
     "weight_decay": 0.0001,
     "early_stopping_patience": 7,
     "checkpoint_dir": "/app/artifacts",
@@ -21,5 +21,12 @@
         "hidden_size": 128,
         "num_layers": 2,
         "dropout": 0.1
+    },
+    "governance": {
+        "model_name": "weather_lstm_baseline",
+        "model_version": "1.0.0",
+        "model_type": "regression",
+        "risk_level": "medium",
+        "fairness_checked": false
     }
 }
