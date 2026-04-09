@@ -122,6 +122,15 @@ Campos preenchidos automaticamente no runtime:
 - `training_data_version`: hash `md5` lido de `data.dvc`.
 - `git_sha`: commit atual via `git rev-parse HEAD`.
 
+Precedência de resolução para `git_sha` e `training_data_version`:
+
+1. Valor explícito no JSON do experimento (`governance.git_sha` / `governance.training_data_version`).
+2. Variáveis de ambiente no container (`GIT_SHA` / `TRAINING_DATA_VERSION`).
+3. Runtime local (`git rev-parse HEAD` e leitura de `data.dvc`).
+4. Fallback final: `unknown`.
+
+No Docker Compose de treino, `.git` e `data.dvc` são montados em modo leitura para permitir a captura automática desses metadados.
+
 ### Visualizar experimentos
 
 Em outro terminal:

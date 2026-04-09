@@ -10,9 +10,14 @@ services:
     environment:
       MLFLOW_TRACKING_URI: file:///app/mlruns
       GIT_PYTHON_REFRESH: quiet
+      GIT_SHA: ${GIT_SHA:-}
+      TRAINING_DATA_VERSION: ${TRAINING_DATA_VERSION:-}
     volumes:
       # Dados de entrada (somente leitura)
       - ../../data/spec:/app/data/spec:ro
+      # Metadados para governança no runtime
+      - ../../.git:/app/.git:ro
+      - ../../data.dvc:/app/data.dvc:ro
       # Checkpoints do melhor modelo
       - ./artifacts:/app/artifacts
       # Experimentos MLflow (compartilhado com o serviço mlflow-ui)

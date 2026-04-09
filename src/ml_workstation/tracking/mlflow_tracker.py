@@ -67,10 +67,8 @@ class MLflowTracker:
     def _build_governance_schema(self) -> dict[str, str]:
         """Monta o schema mínimo obrigatório para governança de modelo."""
         owner = self.config.governance.owner or _read_email_from_environment() or "unknown"
-        git_sha = self.config.governance.git_sha or _read_git_sha()
-        data_version = (
-            self.config.governance.training_data_version or _read_data_dvc_hash() or "unknown"
-        )
+        git_sha = _resolve_git_sha(self.config.governance.git_sha)
+        data_version = _resolve_training_data_version(self.config.governance.training_data_version)
 
         schema = {
             "model_name": self.config.governance.model_name,
@@ -144,16 +142,52 @@ def _read_git_sha() -> str:
         return "unknown"
 
 
+def _resolve_git_sha(config_value: str | None) -> str:
+    """Resolve git SHA com precedência: config -> env -> runtime -> unknown."""
+    if config_value:
+        return config_value.strip()
+
+    env_value = os.getenv("GIT_SHA")
+    if env_value:
+        clean = env_value.strip("\"'").strip()
+        if clean:
+            return clean
+
+    runtime_value = _read_git_sha()
+    return runtime_value or "unknown"
+
+
 def _read_data_dvc_hash() -> str | None:
     dvc_file = _workspace_root() / "data.dvc"
     if not dvc_file.exists():
         return None
 
     text = dvc_file.read_text(encoding="utf-8")
-    match = re.search(r"-\s*md5:\s*([^\s]+)", text)
-    if match:
-        return match.group(1)
+    patterns = [
+        r"-\s*md5:\s*([^\s]+)",
+        r"\bmd5:\s*([^\s]+)",
+        r"\bhash:\s*([^\s]+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1)
     return None
+
+
+def _resolve_training_data_version(config_value: str | None) -> str:
+    """Resolve versão dos dados com precedência: config -> env -> data.dvc -> unknown."""
+    if config_value:
+        return config_value.strip()
+
+    env_value = os.getenv("TRAINING_DATA_VERSION")
+    if env_value:
+        clean = env_value.strip("\"'").strip()
+        if clean:
+            return clean
+
+    runtime_value = _read_data_dvc_hash()
+    return runtime_value or "unknown"
 
 
 def _read_email_from_environment() -> str | None:
