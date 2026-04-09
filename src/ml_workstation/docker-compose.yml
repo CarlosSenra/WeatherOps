@@ -31,6 +31,36 @@ services:
     profiles:
       - train
 
+  # ── Treinamento com GPU (CUDA) ────────────────────────────────────────────
+  trainer-gpu:
+    build:
+      context: ../..          # raiz do projeto (WeatherOps/)
+      dockerfile: src/ml_workstation/Dockerfile
+    image: weatherops-ml:latest
+    container_name: weatherops-trainer-gpu
+    environment:
+      MLFLOW_TRACKING_URI: file:///app/mlruns
+      GIT_PYTHON_REFRESH: quiet
+      GIT_SHA: ${GIT_SHA:-}
+      TRAINING_DATA_VERSION: ${TRAINING_DATA_VERSION:-}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      # Dados de entrada (somente leitura)
+      - ../../data/spec:/app/data/spec:ro
+      # Metadados para governança no runtime
+      - ../../.git:/app/.git:ro
+      - ../../data.dvc:/app/data.dvc:ro
+      # Checkpoints do melhor modelo
+      - ./artifacts:/app/artifacts
+      # Experimentos MLflow (compartilhado com o serviço mlflow-ui)
+      - ./mlruns:/app/mlruns
+      # Arquivos JSON de configuração de runs
+      - ./experiments:/app/experiments
+    gpus: all
+    profiles:
+      - train-gpu
+
   # ── MLflow UI ───────────────────────────────────────────────────────────────
   mlflow-ui:
     image: python:3.12-slim

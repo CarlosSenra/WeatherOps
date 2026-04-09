@@ -1,7 +1,7 @@
 {
     "experiment_name": "weather_forecasting",
     "run_name": "transformer_h336_v2",
-    "epochs": 85,
+    "epochs": 80,
     "batch_size": 16,
     "learning_rate": 0.001,
     "weight_decay": 0.0001,

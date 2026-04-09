@@ -1,7 +1,7 @@
 {
     "experiment_name": "weather_forecasting",
     "run_name": "lstm_h336",
-    "epochs": 70,
+    "epochs": 80,
     "batch_size": 16,
     "learning_rate": 0.0013,
     "weight_decay": 0.0001,

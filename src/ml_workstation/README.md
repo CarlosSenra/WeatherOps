@@ -71,10 +71,8 @@ docker compose --profile train build
 # Smoke test — 3 épocas, rápido para validar o setup
 docker compose --profile train run --rm trainer --config //app/experiments/lstm_smoke_test.json
 
-# LSTM baseline — 50 épocas
+# LSTM 
 docker compose --profile train run --rm trainer --config //app/experiments/lstm_baseline.json
-
-##
 docker compose --profile train run --rm trainer --config //app/experiments/lstm_h72.json
 docker compose --profile train run --rm trainer --config //app/experiments/lstm_h72_v2.json
 docker compose --profile train run --rm trainer --config //app/experiments/lstm_h168.json
@@ -82,10 +80,8 @@ docker compose --profile train run --rm trainer --config //app/experiments/lstm_
 docker compose --profile train run --rm trainer --config //app/experiments/lstm_h336.json
 docker compose --profile train run --rm trainer --config //app/experiments/lstm_h336_v2.json
 
-# Transformer baseline
+# Transformer 
 docker compose --profile train run --rm trainer --config //app/experiments/transformer_baseline.json
-
-##
 docker compose --profile train run --rm trainer --config //app/experiments/transformer_h72.json
 docker compose --profile train run --rm trainer --config //app/experiments/transformer_h72_v2.json
 docker compose --profile train run --rm trainer --config //app/experiments/transformer_h168.json
@@ -93,6 +89,38 @@ docker compose --profile train run --rm trainer --config //app/experiments/trans
 docker compose --profile train run --rm trainer --config //app/experiments/transformer_h336.json
 docker compose --profile train run --rm trainer --config //app/experiments/transformer_h336_v2.json
 ```
+
+### Treinar com CUDA (GPU)
+
+Use o serviço `trainer-gpu` com profile `train-gpu`.
+
+1. Teste de detecção de GPU no container:
+
+```bash
+docker compose --profile train-gpu run --rm --entrypoint python trainer-gpu -c "import torch; print(torch.cuda.is_available(), torch.cuda.device_count(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no-gpu')"
+```
+
+2. Smoke test em CUDA:
+
+```bash
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_smoke_test_cuda.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/transformer_baseline.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h72.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h72_v2.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h168.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h168_v2.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h336.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm_h336_v2.json
+
+```
+
+3. Para executar qualquer experimento em CUDA, use `"device": "cuda"` no JSON e rode via `trainer-gpu`.
+
+Pré-requisitos do host para CUDA:
+
+- Driver NVIDIA instalado e funcional (`nvidia-smi`).
+- Docker Desktop com suporte a GPU habilitado.
+- Ambiente com acesso à GPU (Windows/WSL2 configurado para CUDA).
 
 > **Atenção (Git Bash / Windows):** use `//app/...` (duas barras) ao passar caminhos do container.
 > O Git Bash expande `/app/...` para `C:/Program Files/Git/app/...` causando `FileNotFoundError`.
