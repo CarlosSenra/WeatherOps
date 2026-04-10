@@ -1,11 +1,6 @@
 import pytest
 import pandas as pd
 import numpy as np
-from pathlib import Path
-import sys
-
-# Adiciona o diretório raiz ao path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from core.data_engineering.data_feature_eng.feature_eng import WeatherFeatureEngineer
 from core.data_engineering.models.feature_engineering.inputs import (

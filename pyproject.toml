@@ -33,3 +33,12 @@ packages = [
     { include = "core" },
     { include = "src" }
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+markers = [
+    "unit: fast unit tests",
+    "integration: slower integration tests"
+]

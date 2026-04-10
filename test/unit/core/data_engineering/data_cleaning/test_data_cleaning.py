@@ -1,13 +1,6 @@
 import pytest
 import pandas as pd
 import numpy as np
-from pathlib import Path
-import sys
-from tempfile import TemporaryDirectory
-import datetime
-
-# Adiciona o diretório raiz ao path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from core.data_engineering.data_cleaning.data_cleaning import DataCleaning
 from core.data_engineering.models.data_cleaning.inputs import (

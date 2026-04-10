@@ -3,11 +3,6 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import sys
-import os
-
-# Adiciona o diretório raiz ao path para permitir imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from core.data_engineering.data_cleaning.data_cleaning import DataCleaning
 from core.data_engineering.models.data_cleaning.inputs import (
