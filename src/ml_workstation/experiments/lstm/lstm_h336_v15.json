@@ -1,0 +1,34 @@
+{
+  "experiment_name": "weather_forecasting_h336",
+  "run_name": "lstm_h336_v15",
+  "epochs": 64,
+  "batch_size": 88,
+  "learning_rate": 0.00128,
+  "weight_decay": 8e-05,
+  "early_stopping_patience": 6,
+  "checkpoint_dir": "/app/artifacts",
+  "device": "cuda",
+  "data": {
+    "parquet_path": "/app/data/spec",
+    "target_columns": [
+      "temp_ar_c"
+    ],
+    "sequence_length": 716,
+    "horizon": 336,
+    "train_ratio": 0.8,
+    "val_ratio": 0.1
+  },
+  "model": {
+    "hidden_size": 128,
+    "num_layers": 3,
+    "dropout": 0.15,
+    "model_type": "lstm"
+  },
+  "governance": {
+    "model_name": "weather_lstm_h336",
+    "model_version": "15.0.0",
+    "model_type": "regression",
+    "risk_level": "medium",
+    "fairness_checked": false
+  }
+}

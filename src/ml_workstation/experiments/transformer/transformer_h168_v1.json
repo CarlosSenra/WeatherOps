@@ -1,13 +1,13 @@
 {
   "experiment_name": "weather_forecasting_h168",
   "run_name": "transformer_h168_v1",
-  "epochs": 80,
-  "batch_size": 32,
-  "learning_rate": 0.01,
-  "weight_decay": 0.0001,
-  "early_stopping_patience": 5,
+  "epochs": 40,
+  "batch_size": 128,
+  "learning_rate": 0.002,
+  "weight_decay": 2e-05,
+  "early_stopping_patience": 4,
   "checkpoint_dir": "/app/artifacts",
-  "device": "cpu",
+  "device": "cuda",
   "data": {
     "parquet_path": "/app/data/spec",
     "target_columns": [
@@ -19,11 +19,11 @@
     "val_ratio": 0.1
   },
   "model": {
-    "hidden_size": 192,
-    "num_layers": 4,
-    "dropout": 0.15,
-    "num_heads": 6,
-    "ffn_dim": 512,
+    "hidden_size": 72,
+    "num_layers": 2,
+    "dropout": 0.08,
+    "num_heads": 3,
+    "ffn_dim": 144,
     "model_type": "transformer"
   },
   "governance": {

@@ -1,27 +1,27 @@
 {
   "experiment_name": "weather_forecasting_h336",
   "run_name": "lstm_h336_v3",
-  "epochs": 80,
-  "batch_size": 12,
-  "learning_rate": 0.003,
-  "weight_decay": 0.0001,
-  "early_stopping_patience": 5,
+  "epochs": 40,
+  "batch_size": 128,
+  "learning_rate": 0.002208,
+  "weight_decay": 1.6e-05,
+  "early_stopping_patience": 4,
   "checkpoint_dir": "/app/artifacts",
-  "device": "cpu",
+  "device": "cuda",
   "data": {
     "parquet_path": "/app/data/spec",
     "target_columns": [
       "temp_ar_c"
     ],
-    "sequence_length": 720,
+    "sequence_length": 680,
     "horizon": 336,
     "train_ratio": 0.8,
     "val_ratio": 0.1
   },
   "model": {
-    "hidden_size": 224,
-    "num_layers": 3,
-    "dropout": 0.22,
+    "hidden_size": 96,
+    "num_layers": 1,
+    "dropout": 0.07,
     "model_type": "lstm"
   },
   "governance": {

@@ -1,27 +1,27 @@
 {
   "experiment_name": "weather_forecasting_h168",
   "run_name": "lstm_h168_v2",
-  "epochs": 80,
-  "batch_size": 24,
-  "learning_rate": 0.01,
-  "weight_decay": 0.0001,
-  "early_stopping_patience": 5,
+  "epochs": 38,
+  "batch_size": 128,
+  "learning_rate": 0.002304,
+  "weight_decay": 8e-06,
+  "early_stopping_patience": 4,
   "checkpoint_dir": "/app/artifacts",
-  "device": "cpu",
+  "device": "cuda",
   "data": {
     "parquet_path": "/app/data/spec",
     "target_columns": [
       "temp_ar_c"
     ],
-    "sequence_length": 420,
+    "sequence_length": 340,
     "horizon": 168,
     "train_ratio": 0.8,
     "val_ratio": 0.1
   },
   "model": {
-    "hidden_size": 160,
-    "num_layers": 2,
-    "dropout": 0.15,
+    "hidden_size": 80,
+    "num_layers": 1,
+    "dropout": 0.06,
     "model_type": "lstm"
   },
   "governance": {

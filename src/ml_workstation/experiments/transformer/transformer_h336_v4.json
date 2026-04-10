@@ -1,29 +1,29 @@
 {
   "experiment_name": "weather_forecasting_h336",
   "run_name": "transformer_h336_v4",
-  "epochs": 80,
-  "batch_size": 8,
-  "learning_rate": 0.0007,
-  "weight_decay": 0.0001,
+  "epochs": 46,
+  "batch_size": 120,
+  "learning_rate": 0.00176,
+  "weight_decay": 5e-05,
   "early_stopping_patience": 5,
   "checkpoint_dir": "/app/artifacts",
-  "device": "cpu",
+  "device": "cuda",
   "data": {
     "parquet_path": "/app/data/spec",
     "target_columns": [
       "temp_ar_c"
     ],
-    "sequence_length": 1008,
+    "sequence_length": 684,
     "horizon": 336,
     "train_ratio": 0.8,
     "val_ratio": 0.1
   },
   "model": {
-    "hidden_size": 320,
-    "num_layers": 5,
-    "dropout": 0.25,
-    "num_heads": 10,
-    "ffn_dim": 1280,
+    "hidden_size": 96,
+    "num_layers": 3,
+    "dropout": 0.11,
+    "num_heads": 4,
+    "ffn_dim": 288,
     "model_type": "transformer"
   },
   "governance": {

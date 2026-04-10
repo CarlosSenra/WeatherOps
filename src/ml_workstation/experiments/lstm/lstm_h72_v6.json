@@ -7,7 +7,7 @@
   "weight_decay": 0.0001,
   "early_stopping_patience": 5,
   "checkpoint_dir": "/app/artifacts",
-  "device": "cpu",
+  "device": "cuda",
   "data": {
     "parquet_path": "/app/data/spec",
     "target_columns": [
@@ -19,7 +19,7 @@
     "val_ratio": 0.1
   },
   "model": {
-    "hidden_size": 224,
+    "hidden_size": 128,
     "num_layers": 3,
     "dropout": 0.22,
     "model_type": "lstm"
