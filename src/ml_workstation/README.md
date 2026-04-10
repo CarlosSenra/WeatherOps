@@ -118,11 +118,28 @@ docker compose --profile train-gpu run --rm trainer-gpu --config //app/experimen
 docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm/lstm_h72_v1.json
 docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/transformer/transformer_h72_v1.json
 
-# Exemplo em lote no GPU (h336)
-for v in 2 3 4 5 6; do
-  echo //app/experiments/lstm/lstm_h72_v${v}.json
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h72_v${v}.json"
+# 
+
+for v in 27 28 29 30 31 32 33 34 35 36; do
+  echo //app/experiments/lstm/lstm_h336_v${v}.json
+  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/transformer/transformer_h336v${v}.json"
 done
+
+for v in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36; do
+  echo //app/experiments/transformer/transformer_h72_v${v}.json
+  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/transformer/transformer_h72_v${v}.json"
+done
+
+for v in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36; do
+  echo //app/experiments/transformer/transformer_h168_v${v}.json
+  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/transformer/transformer_h168_v${v}.json"
+done
+
+for v in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36; do
+  echo //app/experiments/transformer/transformer_h336_v${v}.json
+  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/transformer/transformer_h336_v${v}.json"
+done
+
 
 for v in 1 2 3 4 5 6; do
   echo //app/experiments/lstm/lstm_h168_v${v}.json

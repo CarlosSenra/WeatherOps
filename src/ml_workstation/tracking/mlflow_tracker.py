@@ -99,7 +99,7 @@ class MLflowTracker:
 
     def log_model(self, model: nn.Module, artifact_path: str = "model") -> None:
         """Registra o modelo PyTorch no MLflow."""
-        mlflow.pytorch.log_model(model, artifact_path)
+        mlflow.pytorch.log_model(model, artifact_path, serialization_format='pt2')
         logger.info("Modelo PyTorch registrado no MLflow em: %s", artifact_path)
 
     def end_run(self) -> None:
