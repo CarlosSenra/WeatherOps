@@ -25,7 +25,8 @@ build-backend = "poetry.core.masonry.api"
 [dependency-groups]
 dev = [
     "ipykernel (>=7.2.0,<8.0.0)",
-    "pytest (>=9.0.2,<10.0.0)"
+    "pytest (>=9.0.2,<10.0.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)"
 ]
 
 [tool.poetry]
@@ -42,3 +43,10 @@ markers = [
     "unit: fast unit tests",
     "integration: slower integration tests"
 ]
+
+[tool.coverage.run]
+source = ["core", "src"]
+
+[tool.coverage.report]
+fail_under = 60
+show_missing = true

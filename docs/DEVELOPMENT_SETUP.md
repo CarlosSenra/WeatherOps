@@ -6,7 +6,7 @@ Guia de setup para contribuir no WeatherOps de forma reproduzivel.
 
 - Python 3.12+
 - Poetry
-- Docker Desktop + Docker Compose (opcional, recomendado)
+- Docker
 - Git
 
 ## Setup Local
@@ -21,6 +21,7 @@ Executar testes:
 
 ```bash
 poetry run pytest
+poetry run pytest --cov=core --cov=src --cov-report=term-missing
 ```
 
 ## Setup de Treino com Docker

@@ -71,6 +71,7 @@ Instalacao local:
 ```bash
 poetry install
 poetry run pytest
+poetry run pytest --cov=core --cov=src --cov-report=term-missing
 ```
 
 Treino local via Poetry:
