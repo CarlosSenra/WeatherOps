@@ -1,0 +1,19 @@
+experiments:
+  weather_forecasting_h72:
+    model_name: weather_forecasting_h72
+    run_id: e802879bc6f44af99f424cc8ba766709
+    mape: 4.656646360946431
+    promoted_at: '2026-04-11'
+    promoted_by: auto
+  weather_forecasting_h168:
+    model_name: weather_forecasting_h168
+    run_id: 55addc42020e4cd899dac04176b94e12
+    mape: 5.387771058422927
+    promoted_at: '2026-04-11'
+    promoted_by: auto
+  weather_forecasting_h336:
+    model_name: weather_forecasting_h336
+    run_id: 9105d22fd1c74950b134b0bf219ca2ae
+    mape: 5.378279963586369
+    promoted_at: '2026-04-11'
+    promoted_by: auto
