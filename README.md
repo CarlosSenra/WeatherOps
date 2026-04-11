@@ -1,164 +1,136 @@
 # WeatherOps
 
-Plataforma de engenharia de dados e machine learning para previsao meteorologica com foco em series temporais, rastreabilidade de experimentos e preparacao para operacao em escala.
+Plataforma de engenharia de dados e machine learning para previsao meteorologica com foco em series temporais, reproducibilidade e rastreabilidade.
 
 ## Visao Geral
 
-O projeto combina:
+O projeto conecta quatro blocos principais:
 
-- Pipeline de dados meteorologicos (ingestao, limpeza e engenharia de atributos).
-- Treinamento de modelos de previsao (LSTM e Transformer).
-- Tracking de experimentos e artefatos com MLflow.
-- Avaliacao de runs com graficos interativos Real vs Predito.
+1. Engenharia de dados em `core`.
+2. Orquestracao de pipelines em `src/data_airflow`.
+3. Treinamento e tracking em `src/ml_workstation`.
+4. Avaliacao visual de runs em `src/ml_workstation/evaluation`.
 
-Fluxo macro:
+## Fluxo Ponta a Ponta
 
-1. Dados brutos em CSV sao processados.
-2. Dados tratados sao publicados em Parquet (data/spec).
-3. O modulo de treinamento consome os Parquets e executa experimentos.
-4. Metricas, parametros, artefatos e modelo ficam versionados no MLflow.
-5. O modulo de avaliacao gera analise visual por run_id.
+```mermaid
+flowchart LR
+	A[data/raw CSV] --> B[core data cleaning]
+	B --> C[core feature engineering]
+	C --> D[data/spec Parquet]
+	D --> E[ml_workstation train.py]
+	E --> F[MLflow]
+	E --> G[artifacts]
+	F --> H[evaluation]
+	H --> I[evaluation_results HTML]
+```
 
-## Arquitetura
+Mais detalhes: `docs/PIPELINE_FLOW.md`.
 
-- core/: componentes de engenharia de dados (limpeza e feature engineering).
-- src/ml_workstation/: treinamento, tracking e avaliacao de modelos.
-- data/: dados brutos, staging e dados prontos para consumo (spec).
-- notebooks/: exploracao e analise exploratoria.
+## Mapa de Documentacao
 
-Arquivos tecnicos de referencia:
-
-- src/ml_workstation/ARCHITECTURE.md
-- src/ml_workstation/README.md
-- src/ml_workstation/evaluation/README.md
-
-## Stack Tecnologica
-
-- Python 3.12+
-- Poetry (gerenciamento de dependencias)
-- PyTorch (modelagem)
-- MLflow (tracking e model logging)
-- Pandas e Scikit-learn (processamento e normalizacao)
-- Plotly (visualizacao)
-- DVC (versionamento de dados)
-- Docker Compose (execucao isolada de treino e UI de tracking)
+- Geral: `docs/DEVELOPMENT_SETUP.md`, `docs/TROUBLESHOOTING.md`, `docs/PIPELINE_FLOW.md`
+- Core: `core/README.md`, `core/ARCHITECTURE.md`
+- Airflow: `src/data_airflow/README.md`, `src/data_airflow/ARCHITECTURE.md`
+- ML Workstation: `src/ml_workstation/README.md`, `src/ml_workstation/ARCHITECTURE.md`
+- Avaliacao: `src/ml_workstation/evaluation/README.md`
 
 ## Estrutura do Repositorio
 
 ```text
 WeatherOps/
-├── core/                        # Engenharia de dados
-├── data/                        # raw, staging e spec
-├── docs/                        # Documentacao complementar
-├── notebooks/                   # EDA e estudos
+├── core/
+├── data/
+├── docs/
+├── notebooks/
 ├── src/
-│   ├── data_airflow/            # Infra de orquestracao
-│   └── ml_workstation/          # Treino, tracking, avaliacao
-├── pyproject.toml               # Dependencias e metadados Python
-├── docker-compose-airflow.yaml  # Stack airflow
-└── data.dvc                     # Versionamento do dataset
+│   ├── data_airflow/
+│   └── ml_workstation/
+├── test/
+├── pyproject.toml
+├── docker-compose-airflow.yaml
+└── data.dvc
 ```
 
-## Requisitos
+## Stack Tecnologica
 
-### Ambiente local
-
-- Python >= 3.12
-- Poetry instalado
-
-### Ambiente containerizado
-
-- Docker
+- Python 3.12+
+- Poetry
+- Pandas, Scikit-learn
+- PyTorch
+- MLflow
+- Plotly
+- DVC
 - Docker Compose
+- Apache Airflow
 
-## Setup Local
+## Setup Rapido
 
-A partir da raiz do repositorio:
+Instalacao local:
 
 ```bash
 poetry install
-```
-
-Opcional para desenvolvimento:
-
-```bash
 poetry run pytest
 ```
 
-## Treinamento de Modelos
-
-### Opcao 1: Execucao local (Python/Poetry)
-
-Da raiz do projeto:
+Treino local via Poetry:
 
 ```bash
 poetry run python -m src.ml_workstation.train --config src/ml_workstation/experiments/lstm/lstm_h72_v1.json
 ```
 
-### Opcao 2: Execucao via Docker Compose (recomendado para reproducibilidade)
-
-Entre em src/ml_workstation e execute:
+Treino via Docker (CPU):
 
 ```bash
+cd src/ml_workstation
 docker compose --profile train build trainer
 docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h72_v1.json
 ```
 
-Observacao para Git Bash no Windows:
-
-- Use //app/... para caminhos dentro do container.
-
-## Tracking com MLflow
-
-Suba a UI do MLflow em src/ml_workstation:
+Treino via Docker (GPU):
 
 ```bash
-docker compose --profile ui up mlflow-ui -d
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm/lstm_h72_v1.json
 ```
 
-Acesso:
+Observacao (Windows + Git Bash): use `//app/...` para caminhos no container.
 
-- http://localhost:5000
+## MLflow
 
-Dados de tracking ficam persistidos em:
+Subir UI local:
 
-- src/ml_workstation/mlruns
+```bash
+cd src/ml_workstation
+docker compose --profile ui up -d mlflow-ui
+```
 
-## Avaliacao de Experimentos
+Acesso: http://localhost:5000
 
-Da raiz do projeto:
+## Airflow
+
+Subir stack local:
+
+```bash
+docker compose -f docker-compose-airflow.yaml up airflow-init
+docker compose -f docker-compose-airflow.yaml up -d
+```
+
+Acesso: http://localhost:8080
+
+## Avaliacao de Runs
 
 ```bash
 poetry run python -m src.ml_workstation.evaluation.run_evaluation --run-id <RUN_ID>
 ```
 
-Saida esperada:
+Saida: HTML em `evaluation_results/`.
 
-- Arquivo HTML com serie Real vs Predito em evaluation_results/.
+## Qualidade e Governanca
 
-## Governanca e Rastreabilidade
-
-Cada run registra no MLflow:
-
-- Parametros de configuracao completos (data/model/training).
-- Metadados de governanca (model_name, versionamento, responsavel, risco, git_sha, versao de dados).
-- Metricas por epoca e snapshot final.
-- Checkpoint e modelo final como artefatos.
-
-Isso permite auditoria e reproducao de resultados ponta a ponta.
-
-## Boas Praticas Operacionais
-
-1. Sempre versione alteracoes de configuracao em src/ml_workstation/experiments/lstm e src/ml_workstation/experiments/transformer.
-2. Mantenha consistencia entre feature_columns e colunas reais dos Parquets.
-3. Rode um experimento de smoke test antes de execucoes longas.
-4. Monitore no MLflow as metricas de validacao para evitar overfitting.
-5. Registre mudancas de dados e modelos com versionamento explicito.
+- Configs de experimento versionadas em `src/ml_workstation/experiments`.
+- Metadados de governanca registrados no MLflow (tags e params).
+- Testes unitarios e de integracao organizados em `test/`.
 
 ## Licenca
 
-Este projeto esta licenciado sob os termos definidos em LICENSE.
-
-## Proximos Passos
-
-Nos proximos ciclos, vamos implementar agentes de IA com Deep Agents e tambem criar e disponibilizar APIs dos modelos e dos agentes.
+Este projeto esta licenciado conforme `LICENSE`.

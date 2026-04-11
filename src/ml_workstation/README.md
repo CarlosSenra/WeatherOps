@@ -1,256 +1,126 @@
 # ML Workstation
 
-Módulo de treinamento de modelos de séries temporais para previsão meteorológica usando PyTorch + MLflow.
+Modulo de treinamento, tracking e avaliacao de modelos de series temporais com PyTorch + MLflow.
 
----
+## Documentos Principais
+
+- Arquitetura: `src/ml_workstation/ARCHITECTURE.md`
+- Avaliacao: `src/ml_workstation/evaluation/README.md`
+- Guia geral: `docs/DEVELOPMENT_SETUP.md`
+- Troubleshooting: `docs/TROUBLESHOOTING.md`
 
 ## Estrutura
 
-```
+```text
 src/ml_workstation/
+├── config/           # Schemas e validacao de configuracao
+├── data/             # Dataset e loader de parquet
+├── models/           # LSTM e Transformer
+├── training/         # Loop de treino, metricas e checkpoint
+├── tracking/         # Integracao com MLflow
+├── evaluation/       # Avaliacao por run_id e grafico HTML
+├── experiments/      # Configs JSON versionadas
+├── artifacts/        # Checkpoints salvos
+├── mlruns/           # Backend local do MLflow
 ├── Dockerfile
 ├── docker-compose.yml
-│
-├── config/
-│   └── training_config.py       # DataConfig, ModelConfig, TrainingConfig (Pydantic)
-│
-├── data/
-│   ├── dataset.py               # WeatherSequenceDataset
-│   └── loader.py                # ParquetDataLoader — lê, normaliza e divide os dados
-│
-├── models/
-│   ├── interface.py             # ITimeSeriesModel (ABC)
-│   ├── lstm.py                  # WeatherLSTM
-│   └── transformer.py           # WeatherTransformer
-│
-├── training/
-│   ├── metrics.py               # compute_metrics() — MAE, RMSE, MAPE
-│   └── trainer.py               # Trainer — loop, early stopping, checkpointing
-│
-├── tracking/
-│   └── mlflow_tracker.py        # MLflowTracker — wrapper MLflow
-│
-├── train.py                     # Entrypoint de treinamento
-│
-├── experiments/                 # Configs JSON dos runs (volume)
-│   ├── lstm/
-│   │   ├── lstm_h72_v1.json ... lstm_h72_v6.json
-│   │   ├── lstm_h168_v1.json ... lstm_h168_v6.json
-│   │   ├── lstm_h336_v1.json ... lstm_h336_v6.json
-│   │   ├── lstm_smoke_test.json
-│   │   └── lstm_smoke_test_cuda.json
-│   └── transformer/
-│       ├── transformer_h72_v1.json ... transformer_h72_v6.json
-│       ├── transformer_h168_v1.json ... transformer_h168_v6.json
-│       └── transformer_h336_v1.json ... transformer_h336_v6.json
-│
-├── artifacts/                   # Checkpoints do melhor modelo (volume)
-└── mlruns/                      # Experimentos MLflow (volume)
+└── train.py
 ```
 
----
+## Fluxo de Execucao
 
-## Volumes
-
-| Host (`src/ml_workstation/`) | Container | Conteúdo |
-|---|---|---|
-| `../../data/spec` | `/app/data/spec` | Parquet de entrada — somente leitura |
-| `./artifacts` | `/app/artifacts` | Checkpoints `.pt` do melhor modelo |
-| `./mlruns` | `/app/mlruns` | Runs e métricas do MLflow |
-| `./experiments` | `/app/experiments` | Arquivos JSON de configuração |
-
----
-
-## Como usar
-
-Todos os comandos a partir de `src/ml_workstation/`.
-
-### Build
-
-```bash
-docker compose --profile train build
+```mermaid
+flowchart LR
+    A[TrainingConfig JSON] --> B[ParquetDataLoader]
+    B --> C[build_model]
+    C --> D[Trainer.fit]
+    D --> E[MLflowTracker]
+    D --> F[artifacts best_model.pt]
 ```
 
-> **Atenção:** o serviço `trainer` usa o profile `train`. Sem `--profile train` o Docker não encontra serviços para build.
+## Convencoes de Experimento
 
-### Treinar
+- Arquivos em `experiments/lstm` e `experiments/transformer`.
+- Padrao de nome: `<modelo>_<horizonte>_v<versao>.json`.
+- Toda configuracao de experimento deve manter `"device": "cuda"`.
+
+## Como Treinar
+
+Todos os comandos abaixo devem ser executados em `src/ml_workstation`.
+
+Build (CPU):
 
 ```bash
-# Smoke test — rápido para validar o setup
+docker compose --profile train build trainer
+```
+
+Treino smoke test (CPU):
+
+```bash
 docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_smoke_test.json
+```
 
-# Exemplos LSTM
+Treino exemplo (CPU):
+
+```bash
 docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h72_v1.json
-docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h168_v3.json
-docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h336_v6.json
-
-# Exemplos Transformer
-docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h72_v2.json
-docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h168_v4.json
-docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h336_v6.json
-
-# Execução em lote (6 versões) por horizonte
-for v in 1 2 3 4 5 6; do
-    docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h72_v${v}.json
-    docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h168_v${v}.json
-    docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h336_v${v}.json
-done
-
-for v in 1 2 3 4 5 6; do
-    docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h168_v${v}.json
-done
+docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h72_v1.json
 ```
 
-### Treinar com CUDA (GPU)
-
-Use o serviço `trainer-gpu` com profile `train-gpu`.
-
-1. Teste de detecção de GPU no container:
+Treino exemplo (GPU):
 
 ```bash
-docker compose --profile train-gpu run --rm --entrypoint python trainer-gpu -c "import torch; print(torch.cuda.is_available(), torch.cuda.device_count(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no-gpu')"
-```
-
-2. Smoke test em CUDA:
-
-```bash
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm/lstm_smoke_test_cuda.json
 docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm/lstm_h72_v1.json
 docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/transformer/transformer_h72_v1.json
-
-# 
-
-for v in 27 28 29 30 31 32 33 34 35 36; do
-  echo //app/experiments/lstm/lstm_h336_v${v}.json
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/transformer/transformer_h336v${v}.json"
-done
-
-for v in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36; do
-  echo //app/experiments/transformer/transformer_h72_v${v}.json
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/transformer/transformer_h72_v${v}.json"
-done
-
-for v in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36; do
-  echo //app/experiments/transformer/transformer_h168_v${v}.json
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/transformer/transformer_h168_v${v}.json"
-done
-
-for v in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36; do
-  echo //app/experiments/transformer/transformer_h336_v${v}.json
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/transformer/transformer_h336_v${v}.json"
-done
-
-
-for v in 1 2 3 4 5 6; do
-  echo //app/experiments/lstm/lstm_h168_v${v}.json
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h168_v${v}.json"
-done
-
-for v in 1 2 3 4 5 6; do
-  echo //app/experiments/lstm/lstm_h336_v${v}.json
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h336_v${v}.json"
-done
-
-for v in 1 2 3 4 5 6; do
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h72_v${v}.json"
-  echo //app/experiments/transformer/transformer_h72_v${v}.json
-
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h168_v${v}.json"
-  echo //app/experiments/transformer/transformer_h168_v${v}.json
-
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h336_v${v}.json"
-  echo //app/experiments/transformer/transformer_h336_v${v}.json
-done
-
 ```
 
-3. Para executar qualquer experimento em CUDA, use `"device": "cuda"` no JSON e rode via `trainer-gpu`.
-
-Pré-requisitos do host para CUDA:
-
-- Driver NVIDIA instalado e funcional (`nvidia-smi`).
-- Docker Desktop com suporte a GPU habilitado.
-- Ambiente com acesso à GPU (Windows/WSL2 configurado para CUDA).
-
-> **Atenção (Git Bash / Windows):** use `//app/...` (duas barras) ao passar caminhos do container.
-> O Git Bash expande `/app/...` para `C:/Program Files/Git/app/...` causando `FileNotFoundError`.
-
-### Governança no MLflow
-
-Cada treino agora registra metadados de governança em dois formatos:
-
-- **Tags MLflow** (`model_name`, `model_version`, `model_type`, `training_data_version`, `owner`, `risk_level`, `fairness_checked`, `git_sha`)
-- **Parâmetros MLflow** com prefixo `governance.*` (mesmos campos, para facilitar filtros)
-
-Campos de entrada manual no JSON do experimento (bloco `governance`):
-
-```json
-"governance": {
-    "model_name": "weather_lstm_h72",
-    "model_version": "1.0.0",
-    "model_type": "regression",
-    "risk_level": "medium",
-    "fairness_checked": false
-}
-```
-
-Campos preenchidos automaticamente no runtime:
-
-- `owner`: lido de `EMAIL` no ambiente (arquivo `.env` na raiz). Se ausente, usa `unknown`.
-- `training_data_version`: hash `md5` lido de `data.dvc`.
-- `git_sha`: commit atual via `git rev-parse HEAD`.
-
-Precedência de resolução para `git_sha` e `training_data_version`:
-
-1. Valor explícito no JSON do experimento (`governance.git_sha` / `governance.training_data_version`).
-2. Variáveis de ambiente no container (`GIT_SHA` / `TRAINING_DATA_VERSION`).
-3. Runtime local (`git rev-parse HEAD` e leitura de `data.dvc`).
-4. Fallback final: `unknown`.
-
-No Docker Compose de treino, `.git` e `data.dvc` são montados em modo leitura para permitir a captura automática desses metadados.
-
-### Visualizar experimentos
-
-Em outro terminal:
+Loop em lote (GPU, 36 versoes):
 
 ```bash
-docker compose --profile ui up mlflow-ui
+for v in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36; do
+  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h72_v${v}.json"
+done
 ```
 
-Acesse `http://localhost:5000` no navegador. Os runs ficam salvos em `mlruns/` e persistem entre execuções.
+Observacao (Windows + Git Bash): use `//app/...` para evitar reescrita de path.
 
----
+## MLflow
 
-## Criar um novo experimento
+Subir UI:
 
-Crie um arquivo JSON em `experiments/lstm/` ou `experiments/transformer/` baseado nos exemplos existentes e passe via `--config`:
-
-```json
-{
-    "experiment_name": "weather_forecasting_h72",
-    "run_name": "lstm_h72_v7",
-    "epochs": 50,
-    "batch_size": 64,
-    "data": {
-        "parquet_path": "/app/data/spec",
-        "feature_columns": [
-            "temp_ar_c", "umidade_rel_ar_percent", "pressao_atm_estacao_mb",
-            "precipitacao_total_mm", "hora_sin", "hora_cos",
-            "temp_lag_1h", "temp_lag_24h",
-            "temp_ma_6h", "temp_ma_12h",
-            "pressao_ma_6h", "pressao_ma_12h",
-            "pressao_tendencia_1h", "temp_tendencia_1h"
-        ],
-        "target_columns": ["temp_ar_c"],
-        "sequence_length": 24,
-        "horizon": 1
-    },
-    "model": {
-        "model_type": "lstm",
-        "hidden_size": 256,
-        "num_layers": 3
-    }
-}
+```bash
+docker compose --profile ui up -d mlflow-ui
 ```
 
-> As colunas em `feature_columns` devem bater exatamente com as colunas do parquet em `data/spec/`.
+Acesso: http://localhost:5000
+
+## Governanca
+
+Cada run registra:
+
+- Parametros completos de configuracao.
+- Tags e params de governanca (`governance.*`).
+- Metricas por epoca e snapshot final.
+- Checkpoint e modelo logado no MLflow.
+
+Preenchimento automatico quando disponivel:
+
+- `owner` via variavel `EMAIL`.
+- `training_data_version` via hash em `data.dvc`.
+- `git_sha` via commit atual.
+
+## Avaliacao de Run
+
+Executar na raiz do repositorio:
+
+```bash
+poetry run python -m src.ml_workstation.evaluation.run_evaluation --run-id <RUN_ID>
+```
+
+Saida: arquivo HTML em `evaluation_results/`.
+
+## Qualidade
+
+- Priorize smoke test antes de treinos longos.
+- Revise metricas de validacao no MLflow antes de promover configuracoes.
+- Mantenha sincronia entre `feature_columns` e schema real em `data/spec`.
