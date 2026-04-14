@@ -31,7 +31,10 @@ Uso:
 import argparse
 import json
 import logging
+import tempfile
 from pathlib import Path
+
+import joblib
 
 from src.ml_workstation.config.training_config import TrainingConfig
 from src.ml_workstation.data.loader import ParquetDataLoader
@@ -110,6 +113,13 @@ def main(config: TrainingConfig) -> None:
             tracker.log_artifact(result.checkpoint_path)
 
         tracker.log_model(model)
+
+        # 6. Salva e loga o scaler para inferência futura
+        with tempfile.TemporaryDirectory() as tmp:
+            scaler_path = Path(tmp) / "scaler.pkl"
+            joblib.dump(data_loader.scaler, scaler_path)
+            tracker.log_artifact(str(scaler_path))
+            logger.info("Scaler salvo como artefato MLflow.")
 
     finally:
         tracker.end_run()

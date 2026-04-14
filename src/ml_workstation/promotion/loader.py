@@ -3,10 +3,12 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import joblib
 import mlflow
 import mlflow.pytorch
 import torch
 import yaml
+from sklearn.preprocessing import StandardScaler
 
 from src.ml_workstation.evaluation.mlflow_helpers import resolve_tracking_uri
 
@@ -91,6 +93,50 @@ def get_production_info(experiment_name: str) -> dict:
         ModelNotInProductionError: se não houver modelo promovido.
     """
     return _get_production_entry(experiment_name)
+
+
+def load_production_scaler(
+    experiment_name: str,
+    tracking_uri: str | None = None,
+) -> StandardScaler:
+    """Carrega o StandardScaler do run promovido em produção.
+
+    O scaler é baixado do MLflow como artefato 'scaler.pkl', gerado
+    automaticamente pelo pipeline de treinamento (train.py).
+
+    Args:
+        experiment_name: Nome do experimento MLflow (ex.: weather_forecasting_h72).
+        tracking_uri: URI do MLflow tracking. Auto-detectado se None.
+
+    Returns:
+        StandardScaler ajustado nos dados de treino do run promovido.
+
+    Raises:
+        ModelNotInProductionError: se não houver modelo promovido ou o artefato não existir.
+    """
+    resolved = resolve_tracking_uri(tracking_uri)
+    if resolved:
+        mlflow.set_tracking_uri(resolved)
+
+    entry = _get_production_entry(experiment_name)
+    run_id = entry.get("run_id")
+    if not run_id:
+        raise ModelNotInProductionError(
+            f"Nenhum run_id em produção para '{experiment_name}'."
+        )
+
+    try:
+        local_path = mlflow.artifacts.download_artifacts(
+            run_id=run_id, artifact_path="scaler.pkl"
+        )
+        scaler: StandardScaler = joblib.load(local_path)
+        logger.info("Scaler carregado do run %s para '%s'.", run_id, experiment_name)
+        return scaler
+    except Exception as exc:
+        raise ModelNotInProductionError(
+            f"Falha ao carregar scaler.pkl do run '{run_id}' "
+            f"(experimento: '{experiment_name}'). Erro: {exc}"
+        ) from exc
 
 
 def _get_production_entry(experiment_name: str) -> dict:
