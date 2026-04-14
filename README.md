@@ -91,10 +91,12 @@ docker compose --profile train run --rm trainer --config //app/experiments/lstm/
 Treino via Docker (GPU):
 
 ```bash
+docker compose --profile train-gpu up --build
 docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm/lstm_h72_v1.json
 ```
 
-Observacao (Windows + Git Bash): use `//app/...` para caminhos no container.
+Observacao1: (Windows + Git Bash): use `//app/...` para caminhos no container.
+Observacao2: se alterar o pyproject.toml, precisa fazer o rebuild do container.
 
 ## MLflow
 
