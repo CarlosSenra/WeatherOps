@@ -3,7 +3,7 @@ services:
   # ── Treinamento ─────────────────────────────────────────────────────────────
   trainer:
     build:
-      context: ../..          # raiz do projeto (WeatherOps/)
+      context: ../.. # raiz do projeto (WeatherOps/)
       dockerfile: src/ml_workstation/Dockerfile
     image: weatherops-ml:latest
     container_name: weatherops-trainer
@@ -13,6 +13,9 @@ services:
       GIT_SHA: ${GIT_SHA:-}
       TRAINING_DATA_VERSION: ${TRAINING_DATA_VERSION:-}
     volumes:
+      # Código-fonte (hot-reload: sem rebuild a cada alteração)
+      - ../../core:/app/core
+      - ../../src:/app/src
       # Dados de entrada (somente leitura)
       - ../../data/spec:/app/data/spec:ro
       # Metadados para governança no runtime
@@ -24,17 +27,13 @@ services:
       - ./mlruns:/app/mlruns
       # Arquivos JSON de configuração de runs
       - ./experiments:/app/experiments
-    # Uso padrão (defaults do TrainingConfig):
-    #   docker compose run trainer
-    # Com arquivo de config:
-    #   docker compose run trainer --config /app/experiments/lstm_24h.json
     profiles:
       - train
 
   # ── Treinamento com GPU (CUDA) ────────────────────────────────────────────
   trainer-gpu:
     build:
-      context: ../..          # raiz do projeto (WeatherOps/)
+      context: ../.. # raiz do projeto (WeatherOps/)
       dockerfile: src/ml_workstation/Dockerfile
     image: weatherops-ml:latest
     container_name: weatherops-trainer-gpu
@@ -46,6 +45,9 @@ services:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
     volumes:
+      # Código-fonte (hot-reload: sem rebuild a cada alteração)
+      - ../../core:/app/core
+      - ../../src:/app/src
       # Dados de entrada (somente leitura)
       - ../../data/spec:/app/data/spec:ro
       # Metadados para governança no runtime
