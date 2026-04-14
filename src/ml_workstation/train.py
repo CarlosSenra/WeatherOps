@@ -1,32 +1,20 @@
 """
 Entrypoint do ML Workstation para treinamento de modelos de séries temporais.
 
+Suporta quatro arquiteturas via `--config`:
+    lstm        — LSTM empilhado (loop manual PyTorch)
+    transformer — Transformer encoder (loop manual PyTorch)
+    tft         — Temporal Fusion Transformer (pytorch-forecasting + Lightning)
+    nbeats      — N-BEATS (pytorch-forecasting + Lightning)
+
 Uso:
     # Com configuração padrão (LSTM, dados em data/spec):
     python -m src.ml_workstation.train
 
     # Com arquivo de configuração JSON:
     python -m src.ml_workstation.train --config experiments/lstm/lstm_h72_v1.json
-
-    # Exemplo de configuração JSON (experiments/lstm/lstm_h72_v1.json):
-    {
-        "experiment_name": "weather_forecasting_h72",
-        "run_name": "lstm_h72_v1",
-        "epochs": 80,
-        "batch_size": 64,
-        "device": "cpu",
-        "data": {
-            "parquet_path": "data/spec",
-            "target_columns": ["temp_ar_c"],
-            "sequence_length": 168,
-            "horizon": 72
-        },
-        "model": {
-            "model_type": "lstm",
-            "hidden_size": 128,
-            "num_layers": 2
-        }
-    }
+    python -m src.ml_workstation.train --config experiments/tft/tft_h72_v1.json
+    python -m src.ml_workstation.train --config experiments/nbeats/nbeats_h72_v1.json
 """
 import argparse
 import json
@@ -38,7 +26,7 @@ import joblib
 
 from src.ml_workstation.config.training_config import TrainingConfig
 from src.ml_workstation.data.loader import ParquetDataLoader
-from src.ml_workstation.models import build_model
+from src.ml_workstation.models import build_model, build_pf_model
 from src.ml_workstation.tracking.mlflow_tracker import MLflowTracker
 from src.ml_workstation.training.trainer import Trainer
 
@@ -47,6 +35,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+_PF_MODEL_TYPES = frozenset({"tft", "nbeats"})
 
 
 def main(config: TrainingConfig) -> None:
@@ -57,9 +47,20 @@ def main(config: TrainingConfig) -> None:
         config.device,
     )
 
-    # 1. Dados
+    if config.model.model_type in _PF_MODEL_TYPES:
+        _train_pytorch_forecasting(config)
+    else:
+        _train_pytorch(config)
+
+
+# ---------------------------------------------------------------------------
+# LSTM / Transformer — loop de treinamento manual PyTorch
+# ---------------------------------------------------------------------------
+
+def _train_pytorch(config: TrainingConfig) -> None:
+    """Caminho de treino para LSTM e Transformer."""
     data_loader = ParquetDataLoader(config.data)
-    train_loader, val_loader, test_loader, data_output = data_loader.build(
+    train_loader, val_loader, _test_loader, data_output = data_loader.build(
         batch_size=config.batch_size
     )
     target_indices = [config.data.feature_columns.index(c) for c in config.data.target_columns]
@@ -73,7 +74,6 @@ def main(config: TrainingConfig) -> None:
         data_output.num_test_samples,
     )
 
-    # 2. Modelo
     model = build_model(
         n_features=data_output.n_features,
         n_targets=data_output.n_targets,
@@ -82,12 +82,10 @@ def main(config: TrainingConfig) -> None:
     )
     logger.info("Modelo construído: %s", type(model).__name__)
 
-    # 3. Tracker
     tracker = MLflowTracker(config)
     tracker.start_run()
 
     try:
-        # 4. Treinamento
         trainer = Trainer(
             model,
             train_loader,
@@ -108,18 +106,76 @@ def main(config: TrainingConfig) -> None:
 
         tracker.log_governance_metrics(result.final_metrics)
 
-        # 5. Loga artefatos e modelo final
         if Path(result.checkpoint_path).exists():
             tracker.log_artifact(result.checkpoint_path)
 
         tracker.log_model(model)
 
-        # 6. Salva e loga o scaler para inferência futura
         with tempfile.TemporaryDirectory() as tmp:
             scaler_path = Path(tmp) / "scaler.pkl"
             joblib.dump(data_loader.scaler, scaler_path)
             tracker.log_artifact(str(scaler_path))
             logger.info("Scaler salvo como artefato MLflow.")
+
+    finally:
+        tracker.end_run()
+
+
+# ---------------------------------------------------------------------------
+# TFT / NBEATS — pytorch-forecasting + PyTorch Lightning
+# ---------------------------------------------------------------------------
+
+def _train_pytorch_forecasting(config: TrainingConfig) -> None:
+    """Caminho de treino para TFT e NBEATS via pytorch-forecasting."""
+    from src.ml_workstation.data.pf_loader import PytorchForecastingDataLoader
+    from src.ml_workstation.training.pf_trainer import PytorchForecastingTrainer
+
+    pf_loader = PytorchForecastingDataLoader(config.data, model_type=config.model.model_type)
+    train_loader, val_loader, _test_loader, pf_output = pf_loader.build(
+        batch_size=config.batch_size
+    )
+
+    logger.info(
+        "Dados PF carregados — treino: %d amostras, val: %d, teste: %d",
+        pf_output.num_train_samples,
+        pf_output.num_val_samples,
+        pf_output.num_test_samples,
+    )
+
+    model = build_pf_model(
+        dataset=pf_output.training_dataset,
+        config=config.model,
+        learning_rate=config.learning_rate,
+        weight_decay=config.weight_decay,
+    )
+    logger.info("Modelo PF construído: %s", type(model).__name__)
+
+    tracker = MLflowTracker(config)
+    tracker.start_run()
+
+    try:
+        pf_trainer = PytorchForecastingTrainer(
+            model=model,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            config=config,
+            tracker=tracker,
+        )
+        result = pf_trainer.fit()
+
+        logger.info(
+            "Treinamento PF concluído — best_val_loss=%.4f na época %d/%d",
+            result.best_val_loss,
+            result.best_epoch,
+            result.total_epochs_run,
+        )
+
+        tracker.log_governance_metrics(result.final_metrics)
+
+        if result.checkpoint_path and Path(result.checkpoint_path).exists():
+            tracker.log_artifact(result.checkpoint_path)
+
+        tracker.log_model(model)
 
     finally:
         tracker.end_run()

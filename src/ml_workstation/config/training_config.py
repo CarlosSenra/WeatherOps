@@ -66,13 +66,13 @@ class DataConfig(BaseModel):
 class ModelConfig(BaseModel):
     """Configuração da arquitetura do modelo de séries temporais."""
 
-    model_type: Literal["lstm", "transformer"] = Field(
+    model_type: Literal["lstm", "transformer", "tft", "nbeats"] = Field(
         default="lstm",
-        description="Tipo de modelo: 'lstm' ou 'transformer'"
+        description="Tipo de modelo: 'lstm', 'transformer', 'tft' ou 'nbeats'"
     )
     hidden_size: int = Field(
         default=128,
-        description="Dimensão oculta do LSTM ou d_model do Transformer"
+        description="Dimensão oculta do LSTM / d_model do Transformer / tamanho dos blocos TFT e NBEATS"
     )
     num_layers: int = Field(
         default=2,
@@ -89,6 +89,32 @@ class ModelConfig(BaseModel):
     ffn_dim: int = Field(
         default=256,
         description="Dimensão da camada feedforward no Transformer"
+    )
+    # --- TFT-specific ---
+    attention_head_size: int = Field(
+        default=4,
+        description="[TFT] Tamanho de cada cabeça de atenção multi-head"
+    )
+    hidden_continuous_size: int = Field(
+        default=16,
+        description="[TFT] Dimensão das projeções para variáveis contínuas"
+    )
+    # --- NBEATS-specific ---
+    num_stacks: int = Field(
+        default=30,
+        description="[NBEATS] Número de stacks (blocos de expansão)"
+    )
+    num_blocks: int = Field(
+        default=1,
+        description="[NBEATS] Número de blocos por stack"
+    )
+    num_block_layers: int = Field(
+        default=4,
+        description="[NBEATS] Número de camadas lineares dentro de cada bloco"
+    )
+    backcast_loss_ratio: float = Field(
+        default=0.1,
+        description="[NBEATS] Peso do backcast loss relativo ao forecast loss"
     )
 
     class Config:
