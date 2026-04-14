@@ -2,10 +2,14 @@
 
 Modulo de treinamento, tracking e avaliacao de modelos de series temporais com PyTorch + MLflow.
 
+Suporta quatro arquiteturas: LSTM, Transformer, Temporal Fusion Transformer (TFT) e N-BEATS.
+LSTM e Transformer usam loop de treinamento manual PyTorch; TFT e N-BEATS usam pytorch-forecasting + PyTorch Lightning.
+
 ## Documentos Principais
 
 - Arquitetura: `src/ml_workstation/ARCHITECTURE.md`
 - Avaliacao: `src/ml_workstation/evaluation/README.md`
+- Promocao: `src/ml_workstation/promotion/PROMOTION.md`
 - Guia geral: `docs/DEVELOPMENT_SETUP.md`
 - Troubleshooting: `docs/TROUBLESHOOTING.md`
 
@@ -13,36 +17,75 @@ Modulo de treinamento, tracking e avaliacao de modelos de series temporais com P
 
 ```text
 src/ml_workstation/
-├── config/           # Schemas e validacao de configuracao
-├── data/             # Dataset e loader de parquet
-├── models/           # LSTM e Transformer
-├── training/         # Loop de treino, metricas e checkpoint
-├── tracking/         # Integracao com MLflow
-├── evaluation/       # Avaliacao por run_id e grafico HTML
-├── experiments/      # Configs JSON versionadas
-├── artifacts/        # Checkpoints salvos
-├── mlruns/           # Backend local do MLflow
+├── config/
+│   └── training_config.py    # TrainingConfig, DataConfig, ModelConfig, GovernanceConfig
+├── data/
+│   ├── dataset.py            # WeatherSequenceDataset (janelas deslizantes para LSTM/Transformer)
+│   ├── loader.py             # ParquetDataLoader (LSTM/Transformer)
+│   └── pf_loader.py          # PytorchForecastingDataLoader (TFT/NBEATS -> TimeSeriesDataSet)
+├── models/
+│   ├── interface.py          # ITimeSeriesModel (contrato LSTM/Transformer)
+│   ├── lstm.py               # WeatherLSTM
+│   ├── transformer.py        # WeatherTransformer
+│   ├── tft.py                # WeatherTFT (TemporalFusionTransformer factory)
+│   └── nbeats.py             # WeatherNBEATS (NBeats factory)
+├── training/
+│   ├── metrics.py            # compute_metrics, compute_mape
+│   ├── trainer.py            # Trainer — loop manual PyTorch (LSTM/Transformer)
+│   └── pf_trainer.py         # PytorchForecastingTrainer — pl.Trainer (TFT/NBEATS)
+├── tracking/
+│   └── mlflow_tracker.py     # MLflowTracker
+├── evaluation/
+│   ├── core.py
+│   ├── mlflow_helpers.py
+│   └── run_evaluation.py
+├── experiments/
+│   ├── lstm/                 # lstm_<horizonte>_v<versao>.json
+│   ├── transformer/          # transformer_<horizonte>_v<versao>.json
+│   ├── tft/                  # tft_<horizonte>_v<versao>.json
+│   └── nbeats/               # nbeats_<horizonte>_v<versao>.json
+├── promotion/
+├── artifacts/                # checkpoints salvos
+├── mlruns/                   # backend local do MLflow
 ├── Dockerfile
 ├── docker-compose.yml
-└── train.py
+└── train.py                  # entrypoint
 ```
 
 ## Fluxo de Execucao
 
+O entrypoint `train.py` faz o dispatch baseado em `model.model_type`:
+
 ```mermaid
 flowchart LR
-    A[TrainingConfig JSON] --> B[ParquetDataLoader]
-    B --> C[build_model]
-    C --> D[Trainer.fit]
-    D --> E[MLflowTracker]
-    D --> F[artifacts best_model.pt]
+    A[TrainingConfig JSON] --> B{model_type}
+    B -->|lstm / transformer| C[ParquetDataLoader]
+    C --> D[build_model]
+    D --> E[Trainer.fit]
+    E --> F[MLflowTracker]
+    B -->|tft / nbeats| G[PytorchForecastingDataLoader]
+    G --> H[build_pf_model]
+    H --> I[PytorchForecastingTrainer.fit]
+    I --> F
 ```
 
 ## Convencoes de Experimento
 
-- Arquivos em `experiments/lstm` e `experiments/transformer`.
+- Pastas: `experiments/lstm`, `experiments/transformer`, `experiments/tft`, `experiments/nbeats`.
 - Padrao de nome: `<modelo>_<horizonte>_v<versao>.json`.
 - Toda configuracao de experimento deve manter `"device": "cuda"`.
+- Horizontes disponiveis: `h72` (3 dias), `h168` (7 dias), `h336` (14 dias).
+
+## Dependencias
+
+As dependencias abaixo sao instaladas automaticamente via `poetry install`:
+
+| Pacote | Uso |
+|---|---|
+| `torch` | Loop manual (LSTM/Transformer) |
+| `pytorch-forecasting` | Modelos TFT e NBEATS |
+| `lightning` | `pl.Trainer` usado pelo PytorchForecastingTrainer |
+| `mlflow` | Tracking de experimentos e model registry |
 
 ## Como Treinar
 
@@ -51,7 +94,13 @@ Todos os comandos abaixo devem ser executados em `src/ml_workstation`.
 Build (CPU):
 
 ```bash
-docker compose --profile train build trainer
+docker compose --profile train up --build trainer
+```
+
+Build (GPU)
+
+```bash
+docker compose --profile train-gpu up --build trainer-gpu
 ```
 
 Treino smoke test (CPU):
@@ -60,25 +109,62 @@ Treino smoke test (CPU):
 docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_smoke_test.json
 ```
 
-Treino exemplo (CPU):
+Treino LSTM e Transformer (CPU):
 
 ```bash
 docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h72_v1.json
 docker compose --profile train run --rm trainer --config //app/experiments/transformer/transformer_h72_v1.json
 ```
 
-Treino exemplo (GPU):
+Treino TFT (CPU):
 
 ```bash
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/lstm/lstm_h72_v1.json
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/transformer/transformer_h72_v1.json
+docker compose --profile train run --rm trainer --config //app/experiments/tft/tft_h72_v1.json
+docker compose --profile train run --rm trainer --config //app/experiments/tft/tft_h168_v1.json
+docker compose --profile train run --rm trainer --config //app/experiments/tft/tft_h336_v1.json
 ```
 
-Loop em lote (GPU, 36 versoes):
+Treino NBEATS (CPU):
 
 ```bash
-for v in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36; do
-  docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/lstm/lstm_h72_v${v}.json"
+docker compose --profile train run --rm trainer --config //app/experiments/nbeats/nbeats_h72_v1.json
+docker compose --profile train run --rm trainer --config //app/experiments/nbeats/nbeats_h168_v1.json
+docker compose --profile train run --rm trainer --config //app/experiments/nbeats/nbeats_h336_v1.json
+```
+
+Treino GPU (qualquer modelo):
+
+```bash
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/tft/tft_h72_v1.json
+docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/nbeats/nbeats_h72_v1.json
+```
+
+Loop em lote — todos os horizontes TFT (GPU):
+
+```bash
+for h in h72 h168 h336; do
+  for v in 1 2 3; do
+    echo //app/experiments/tft/tft_${h}_v${v}.json
+    docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/tft/tft_${h}_v${v}.json"
+  done
+done
+
+for h in h72 h168 h336; do
+  for v in 1 2 3; do
+    echo //app/experiments/nbeats/nbeats_${h}_v${v}.json
+    docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/nbeats/nbeats_${h}_v${v}.json"
+  done
+done
+```
+
+Loop em lote — todos os horizontes NBEATS (GPU):
+
+```bash
+for h in h72 h168 h336; do
+  for v in 1 2 3; do
+    echo //app/experiments/nbeats/nbeats_${h}_v${v}.json
+    docker compose --profile train-gpu run --rm trainer-gpu --config "//app/experiments/nbeats/nbeats_${h}_v${v}.json"
+  done
 done
 ```
 
@@ -119,8 +205,11 @@ poetry run python -m src.ml_workstation.evaluation.run_evaluation --run-id <RUN_
 
 Saida: arquivo HTML em `evaluation_results/`.
 
+Nota: avaliacao interativa suportada apenas para modelos LSTM e Transformer. Ver `evaluation/README.md` para detalhes sobre limitacoes com TFT e NBEATS.
+
 ## Qualidade
 
 - Priorize smoke test antes de treinos longos.
 - Revise metricas de validacao no MLflow antes de promover configuracoes.
 - Mantenha sincronia entre `feature_columns` e schema real em `data/spec`.
+- Para TFT/NBEATS: confirme que `hora_sin` e `hora_cos` estao presentes em `feature_columns` (classificados como known future reals automaticamente).

@@ -2,6 +2,10 @@
 
 Módulo para avaliar modelos treinados no MLflow usando run_id, gerar predições no conjunto de teste e salvar um gráfico Plotly com Real vs Predito.
 
+> **Modelos suportados: LSTM e Transformer.**
+> A avaliação interativa via este módulo não é suportada para runs de TFT e NBEATS.
+> Veja a seção [Limitação para TFT e NBEATS](#limitacao-para-tft-e-nbeats) ao final deste documento.
+
 ## Arquivos
 
 ```text
@@ -120,3 +124,22 @@ Grafico salvo em: evaluation_results/14815808b23f47238e2e2379f59f2d2e_target-tem
 - Alguns runs antigos podem ter metadados de artifact repository incompatíveis localmente. Nesses casos, o fallback para best_model.pt é usado automaticamente.
 - Se o run foi treinado em container com caminho /app/data/spec, o script resolve para o caminho local do workspace quando possível.
 - Se target-index ou horizon-step estiver fora do range do modelo, o script falha com mensagem explícita.
+
+## Limitacao para TFT e NBEATS
+
+O módulo de avaliação atual (`core.py`) foi projetado para a interface `ITimeSeriesModel`, que recebe tensores crus `(batch, seq_len, n_features)` e retorna `(batch, horizon, n_targets)`.
+
+Modelos TFT e NBEATS são `LightningModule` do pytorch-forecasting e **não implementam essa interface**. A inferência desses modelos exige um batch no formato de dicionário produzido pelo `TimeSeriesDataSet`, que não está disponível no pipeline de avaliação atual.
+
+O que funciona para runs TFT/NBEATS:
+
+- O modelo é salvo normalmente no MLflow via `mlflow.pytorch.log_model`.
+- O carregamento via `runs:/<run_id>/model` não falha.
+- Métricas de validação por época e o snapshot final ficam registrados no MLflow e podem ser consultados normalmente pela UI.
+
+O que **não funciona** para runs TFT/NBEATS via este módulo:
+
+- Inferência no split de teste.
+- Geração do gráfico HTML Real vs Predito.
+
+Para avaliar visualmente um modelo TFT ou NBEATS, use diretamente as APIs do pytorch-forecasting após recarregar o modelo e reconstruir o `TimeSeriesDataSet` de teste.
