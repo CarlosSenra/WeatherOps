@@ -2,33 +2,17 @@ from __future__ import annotations
 
 import logging
 from datetime import date
-from pathlib import Path
 
 import mlflow
 import mlflow.pytorch
-import yaml
 
 from src.ml_workstation.evaluation.mlflow_helpers import resolve_tracking_uri
 
 logger = logging.getLogger(__name__)
 
-_PRODUCTION_FILE = Path(__file__).resolve().parents[1] / "models_production.yaml"
-
 
 class PromotionRejectedError(Exception):
     """Levantada quando o candidato tem métrica pior que o modelo atual em produção."""
-
-
-def _load_production_registry() -> dict:
-    if not _PRODUCTION_FILE.exists():
-        return {"experiments": {}}
-    with _PRODUCTION_FILE.open(encoding="utf-8") as f:
-        return yaml.safe_load(f) or {"experiments": {}}
-
-
-def _save_production_registry(data: dict) -> None:
-    with _PRODUCTION_FILE.open("w", encoding="utf-8") as f:
-        yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
 
 
 def _get_experiment_id(client: mlflow.MlflowClient, experiment_name: str) -> str:
@@ -36,6 +20,21 @@ def _get_experiment_id(client: mlflow.MlflowClient, experiment_name: str) -> str
     if experiment is None:
         raise ValueError(f"Experimento MLflow não encontrado: '{experiment_name}'")
     return experiment.experiment_id
+
+
+def _get_current_production_mape(
+    client: mlflow.MlflowClient, model_name: str
+) -> float | None:
+    """Retorna o MAPE da model version atualmente em produção via Registry tags.
+
+    Retorna None se não houver alias 'production' ou se a tag 'mape' estiver ausente.
+    """
+    try:
+        mv = client.get_model_version_by_alias(model_name, "production")
+        mape_str = mv.tags.get("mape")
+        return float(mape_str) if mape_str else None
+    except Exception:
+        return None
 
 
 def select_best_run(
@@ -78,8 +77,11 @@ def promote_run(
     tracking_uri: str | None = None,
     force: bool = False,
 ) -> str:
-    """Registra o run no MLflow Model Registry com alias 'production' e atualiza
-    models_production.yaml.
+    """Registra o run no MLflow Model Registry com alias 'production'.
+
+    O MLflow Model Registry é a única fonte de verdade sobre o estado de produção.
+    Metadados de promoção (mape, promoted_at, promoted_by, experiment_name, run_id)
+    são armazenados como tags na model version registrada.
 
     Rejeita a promoção se o MAPE do candidato for pior que o atual em produção,
     a menos que `force=True`.
@@ -100,10 +102,8 @@ def promote_run(
 
     effective_model_name = model_name or experiment_name
 
-    # Verifica regressão de métricas
-    registry = _load_production_registry()
-    current = registry.get("experiments", {}).get(experiment_name, {})
-    current_mape = current.get("mape")
+    # Verifica regressão de métricas consultando o Registry
+    current_mape = _get_current_production_mape(client, effective_model_name)
 
     if (
         not force
@@ -131,19 +131,17 @@ def promote_run(
     )
     logger.info("Alias 'production' atribuído a %s v%s", effective_model_name, mv.version)
 
-    # Atualiza models_production.yaml
-    experiments = registry.setdefault("experiments", {})
-    experiments.setdefault(experiment_name, {}).update(
-        {
-            "model_name": effective_model_name,
-            "run_id": run_id,
-            "mape": float(candidate_mape) if candidate_mape is not None else None,
-            "promoted_at": date.today().isoformat(),
-            "promoted_by": "manual" if model_name else "auto",
-        }
-    )
-    _save_production_registry(registry)
-    logger.info("models_production.yaml atualizado para experimento '%s'.", experiment_name)
+    # Grava metadados como tags na model version — fonte de verdade sobre produção
+    tags = {
+        "mape": str(float(candidate_mape)) if candidate_mape is not None else "",
+        "promoted_at": date.today().isoformat(),
+        "promoted_by": "manual" if model_name else "auto",
+        "experiment_name": experiment_name,
+        "run_id": run_id,
+    }
+    for key, value in tags.items():
+        client.set_model_version_tag(effective_model_name, mv.version, key, value)
+    logger.info("Tags de promoção gravadas na versão %s de '%s'.", mv.version, effective_model_name)
 
     return mv.version
 

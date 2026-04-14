@@ -177,6 +177,13 @@ def _train_pytorch_forecasting(config: TrainingConfig) -> None:
 
         tracker.log_model(model)
 
+        # TFT/N-BEATS normalizam internamente via GroupNormalizer do TimeSeriesDataSet;
+        # não há StandardScaler externo a persistir (diferente de LSTM/Transformer).
+        logger.info(
+            "Modelo %s: normalização embutida no modelo — scaler.pkl não aplicável.",
+            config.model.model_type.upper(),
+        )
+
     finally:
         tracker.end_run()
 
