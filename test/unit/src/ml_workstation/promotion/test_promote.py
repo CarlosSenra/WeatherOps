@@ -442,8 +442,8 @@ class TestGetProductionInfo:
 
 class TestLoadProductionScaler:
     def test_loads_scaler_from_run(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from sklearn.preprocessing import StandardScaler
-        dummy_scaler = StandardScaler()
+        sklearn_pre = pytest.importorskip("sklearn.preprocessing", exc_type=ImportError)
+        dummy_scaler = sklearn_pre.StandardScaler()
 
         mv = _make_model_version("3", "run-with-scaler", mape=5.0)
         client = MagicMock()
