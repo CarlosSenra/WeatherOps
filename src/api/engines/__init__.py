@@ -8,16 +8,35 @@ Para adicionar uma nova família de engines:
 from __future__ import annotations
 
 from src.api.engines.base import BaseInferenceEngine, InferenceContext
-from src.api.engines.pytorch_forecasting import PytorchForecastingEngine
-from src.api.engines.sequential import SequentialEngine
 
-ENGINE_REGISTRY: dict[str, type[BaseInferenceEngine]] = {
-    "pytorch_forecasting": PytorchForecastingEngine,
-    "sequential": SequentialEngine,
-    # Famílias de engines futuras:
-    # "onnx": OnnxEngine,
-    # "triton": TritonEngine,
+__all__ = [
+    "BaseInferenceEngine",
+    "InferenceContext",
+    "PytorchForecastingEngine",
+    "SequentialEngine",
+    "ENGINE_REGISTRY",
+]
+
+_LAZY: dict[str, tuple[str, str]] = {
+    "PytorchForecastingEngine": ("src.api.engines.pytorch_forecasting", "PytorchForecastingEngine"),
+    "SequentialEngine": ("src.api.engines.sequential", "SequentialEngine"),
 }
+
+
+def __getattr__(name: str):
+    import importlib  # noqa: PLC0415
+
+    if name in _LAZY:
+        mod_path, attr = _LAZY[name]
+        return getattr(importlib.import_module(mod_path), attr)
+    if name == "ENGINE_REGISTRY":
+        PytorchForecastingEngine = __getattr__("PytorchForecastingEngine")
+        SequentialEngine = __getattr__("SequentialEngine")
+        return {
+            "pytorch_forecasting": PytorchForecastingEngine,
+            "sequential": SequentialEngine,
+        }
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "BaseInferenceEngine",
