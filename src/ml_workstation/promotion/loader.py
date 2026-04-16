@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import joblib
 import mlflow
@@ -9,6 +10,10 @@ import torch
 from sklearn.preprocessing import StandardScaler
 
 from src.ml_workstation.evaluation.mlflow_helpers import resolve_tracking_uri
+from src.ml_workstation.promotion.export_local import (
+    is_mlflow_pytorch_model_dir,
+    read_export_manifest,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +50,21 @@ def load_production_model(
     tracking_uri: str | None = None,
     device: str = "cpu",
     model_name: str | None = None,
+    *,
+    local_model_root: str | Path | None = None,
 ) -> torch.nn.Module:
     """Carrega o modelo em produção via MLflow Model Registry (alias 'production').
+
+    Se ``local_model_root`` estiver definido e existir
+    ``<local_model_root>/<model_name>/`` com um modelo PyTorch MLflow (pasta com
+    ``MLmodel``), carrega a partir do disco; caso contrário usa o Registry.
 
     Args:
         experiment_name: Nome do experimento MLflow (ex.: weather_forecasting_h72).
         tracking_uri: URI do MLflow tracking. Auto-detectado se None.
         device: Dispositivo de inferência ('cpu' ou 'cuda').
         model_name: Nome no Registry (padrão: experiment_name).
+        local_model_root: Diretório base com exportações (ex.: ``/app/ml_models``).
 
     Returns:
         Modelo PyTorch carregado e pronto para inferência.
@@ -60,16 +72,33 @@ def load_production_model(
     Raises:
         ModelNotInProductionError: se não houver alias 'production' ou o carregamento falhar.
     """
+    effective_model_name = _resolve_model_name(experiment_name, model_name)
+    map_device = torch.device(device)
+
+    if local_model_root:
+        local_dir = Path(local_model_root) / effective_model_name
+        if is_mlflow_pytorch_model_dir(local_dir):
+            try:
+                model = mlflow.pytorch.load_model(
+                    str(local_dir), map_location=map_device
+                )
+                logger.info("Modelo carregado de disco: %s", local_dir)
+                return model
+            except Exception as exc:
+                logger.warning(
+                    "Falha ao carregar de %s (%s); a tentar Registry.",
+                    local_dir,
+                    exc,
+                )
+
     resolved = resolve_tracking_uri(tracking_uri)
     if resolved:
         mlflow.set_tracking_uri(resolved)
 
-    effective_model_name = _resolve_model_name(experiment_name, model_name)
     client = mlflow.MlflowClient()
     _get_production_version(client, effective_model_name, experiment_name)
 
     registry_uri = f"models:/{effective_model_name}@production"
-    map_device = torch.device(device)
 
     try:
         model = mlflow.pytorch.load_model(registry_uri, map_location=map_device)
@@ -86,8 +115,13 @@ def get_production_info(
     experiment_name: str,
     tracking_uri: str | None = None,
     model_name: str | None = None,
+    *,
+    local_model_root: str | Path | None = None,
 ) -> dict:
     """Retorna os metadados do modelo em produção lidos das tags da model version.
+
+    Se existir ``manifest.json`` numa exportação local (``local_model_root``), usa-o;
+    caso contrário consulta o MLflow Model Registry.
 
     Returns:
         Dicionário com model_name, version, run_id, mape, promoted_at, promoted_by,
@@ -96,11 +130,26 @@ def get_production_info(
     Raises:
         ModelNotInProductionError: se não houver modelo promovido.
     """
+    effective_model_name = _resolve_model_name(experiment_name, model_name)
+
+    if local_model_root:
+        local_dir = Path(local_model_root) / effective_model_name
+        manifest = read_export_manifest(local_dir) if local_dir.is_dir() else None
+        if manifest and is_mlflow_pytorch_model_dir(local_dir):
+            return {
+                "model_name": manifest.get("model_name", effective_model_name),
+                "version": manifest.get("registry_version", ""),
+                "run_id": manifest.get("run_id", ""),
+                "mape": manifest.get("mape"),
+                "promoted_at": manifest.get("promoted_at"),
+                "promoted_by": "export",
+                "experiment_name": manifest.get("experiment_name", experiment_name),
+            }
+
     resolved = resolve_tracking_uri(tracking_uri)
     if resolved:
         mlflow.set_tracking_uri(resolved)
 
-    effective_model_name = _resolve_model_name(experiment_name, model_name)
     client = mlflow.MlflowClient()
     mv = _get_production_version(client, effective_model_name, experiment_name)
 

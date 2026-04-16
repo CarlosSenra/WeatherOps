@@ -1,3 +1,4 @@
+from src.ml_workstation.promotion.export_local import export_promoted_model_to_disk
 from src.ml_workstation.promotion.loader import (
     ModelNotInProductionError,
     get_production_info,
@@ -12,6 +13,7 @@ from src.ml_workstation.promotion.promote import (
 )
 
 __all__ = [
+    "export_promoted_model_to_disk",
     "promote_best",
     "promote_run",
     "select_best_run",

@@ -225,3 +225,6 @@ src/ml_workflow/mlruns/*
 # ML Workstation — artefatos gerados localmente
 src/ml_workstation/mlruns/
 src/ml_workstation/artifacts/
+
+# API — modelos exportados para serving (promote --export-dir)
+src/api/ml_models/

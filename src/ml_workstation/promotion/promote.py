@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import logging
 from datetime import date
+from pathlib import Path
 
 import mlflow
 import mlflow.pytorch
 
 from src.ml_workstation.evaluation.mlflow_helpers import resolve_tracking_uri
+from src.ml_workstation.promotion.export_local import export_promoted_model_to_disk
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,7 @@ def promote_run(
     model_name: str | None = None,
     tracking_uri: str | None = None,
     force: bool = False,
+    export_dir: str | Path | None = None,
 ) -> str:
     """Registra o run no MLflow Model Registry com alias 'production'.
 
@@ -143,6 +146,25 @@ def promote_run(
         client.set_model_version_tag(effective_model_name, mv.version, key, value)
     logger.info("Tags de promoção gravadas na versão %s de '%s'.", mv.version, effective_model_name)
 
+    if export_dir:
+        try:
+            export_promoted_model_to_disk(
+                run_id=run_id,
+                effective_model_name=effective_model_name,
+                registry_version=str(mv.version),
+                experiment_name=experiment_name,
+                tracking_uri=tracking_uri,
+                export_dir=export_dir,
+                candidate_mape=float(candidate_mape) if candidate_mape is not None else None,
+                promoted_at=tags["promoted_at"],
+            )
+        except Exception as exc:
+            logger.warning(
+                "Exportação para disco falhou (promoção no Registry mantém-se): %s",
+                exc,
+                exc_info=True,
+            )
+
     return mv.version
 
 
@@ -152,6 +174,7 @@ def promote_best(
     model_name: str | None = None,
     tracking_uri: str | None = None,
     force: bool = False,
+    export_dir: str | Path | None = None,
 ) -> str:
     """Seleciona o melhor run e o promove para produção.
 
@@ -169,4 +192,5 @@ def promote_best(
         model_name=model_name,
         tracking_uri=tracking_uri,
         force=force,
+        export_dir=export_dir,
     )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 
 from src.ml_workstation.promotion.promote import PromotionRejectedError, promote_best, promote_run
@@ -18,8 +19,8 @@ logger = logging.getLogger(__name__)
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
-            "Seleciona e promove o melhor modelo de um experimento MLflow para produção, "
-            "registrando no Model Registry e atualizando models_production.yaml."
+            "Seleciona e promove o melhor modelo de um experimento MLflow para produção "
+            "no Model Registry (alias production). Opcionalmente exporta o artefato para disco."
         )
     )
     parser.add_argument(
@@ -66,11 +67,25 @@ def _build_parser() -> argparse.ArgumentParser:
             "que o modelo atual em produção."
         ),
     )
+    parser.add_argument(
+        "--export-dir",
+        type=str,
+        default=None,
+        metavar="DIR",
+        help=(
+            "Após promover, exporta o artefato 'model' para DIR/<nome_no_registry>. "
+            "Predefinição: variável de ambiente WEATHEROPS_EXPORT_MODELS_DIR "
+            "(ex.: src/api/ml_models relativo ao repositório)."
+        ),
+    )
     return parser
 
 
 def main() -> None:
     args = _build_parser().parse_args()
+    export_dir = getattr(args, "export_dir", None) or os.environ.get(
+        "WEATHEROPS_EXPORT_MODELS_DIR"
+    )
 
     try:
         if args.run_id:
@@ -80,6 +95,7 @@ def main() -> None:
                 model_name=args.model_name,
                 tracking_uri=args.tracking_uri,
                 force=args.force,
+                export_dir=export_dir,
             )
             print(
                 f"Modelo promovido com sucesso.\n"
@@ -94,6 +110,7 @@ def main() -> None:
                 model_name=args.model_name,
                 tracking_uri=args.tracking_uri,
                 force=args.force,
+                export_dir=export_dir,
             )
             print(
                 f"Melhor run promovido com sucesso.\n"
