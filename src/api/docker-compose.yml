@@ -1,0 +1,76 @@
+services:
+
+  # ── Serving API ─────────────────────────────────────────────────────────────
+  weatherops-api:
+    build:
+      context: ../..                  # repo root (WeatherOps/)
+      dockerfile: src/api/Dockerfile
+    image: weatherops-api:latest
+    container_name: weatherops-api
+    ports:
+      - "8888:8000"
+    environment:
+      MLFLOW_TRACKING_URI: file:///app/mlruns
+      # Modelos exportados (promote --export-dir); montar volume ml_models abaixo.
+      WEATHEROPS_MODEL_ROOT: /app/ml_models
+      PARQUET_PATH: /app/data/spec
+      DEVICE: cpu
+      # Cache (set CACHE_BACKEND=redis + REDIS_URL to enable Redis)
+      CACHE_BACKEND: memory
+      CACHE_TTL_SECONDS: "3600"
+      # Tracing (set OTEL_EXPORTER_OTLP_ENDPOINT to enable OTel)
+      # OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: weatherops-api
+      GIT_PYTHON_REFRESH: quiet
+    volumes:
+      # Source code (hot-reload without rebuild during development)
+      - ../../core:/app/core
+      - ../../src:/app/src
+      # Shared MLflow store — read-write required for MLflow FileStore .trash init
+      - ../ml_workstation/mlruns:/app/mlruns
+      # Parquet dataset — read-only
+      - ../../data/spec:/app/data/spec:ro
+      # Modelos PyTorch exportados pelo promote (opcional; prioridade sobre só mlruns)
+      - ../../src/api/ml_models:/app/ml_models:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s           # allow time for model loading at startup
+    restart: unless-stopped
+    profiles:
+      - api
+
+  # ── MLflow UI (shared with training compose) ─────────────────────────────────
+  mlflow-ui:
+    image: python:3.12-slim
+    container_name: weatherops-mlflow-ui-api
+    command: >
+      bash -c "pip install mlflow --quiet &&
+               mlflow ui --host 0.0.0.0 --port 5000
+                         --backend-store-uri file:///app/mlruns"
+    ports:
+      # Host 5001 avoids conflicts when another process already uses 5000.
+      - "5001:5000"
+    volumes:
+      - ../ml_workstation/mlruns:/app/mlruns
+    restart: unless-stopped
+    profiles:
+      - api
+
+  # ── OpenTelemetry Collector (optional) ───────────────────────────────────────
+  # Uncomment to enable distributed tracing. Set OTEL_EXPORTER_OTLP_ENDPOINT
+  # in the weatherops-api service to http://otel-collector:4318.
+  #
+  # otel-collector:
+  #   image: otel/opentelemetry-collector-contrib:latest
+  #   container_name: otel-collector
+  #   command: ["--config=/etc/otel-collector-config.yaml"]
+  #   volumes:
+  #     - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+  #   ports:
+  #     - "4318:4318"   # OTLP HTTP
+  #     - "55679:55679" # zpages
+  #   profiles:
+  #     - tracing
