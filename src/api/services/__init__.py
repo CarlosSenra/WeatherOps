@@ -8,12 +8,25 @@ Exporta as classes de serviço que compõem a camada de negócio da API:
 - ``Predictor``:     Orquestra uma requisição de previsão de ponta a ponta.
 """
 from src.api.services.data_service import DataService
-from src.api.services.model_registry import ModelEntry, ModelRegistry
-from src.api.services.predictor import Predictor
 
 __all__ = [
     "DataService",
-    "ModelRegistry",
     "ModelEntry",
+    "ModelRegistry",
     "Predictor",
 ]
+
+_LAZY: dict[str, tuple[str, str]] = {
+    "ModelEntry": ("src.api.services.model_registry", "ModelEntry"),
+    "ModelRegistry": ("src.api.services.model_registry", "ModelRegistry"),
+    "Predictor": ("src.api.services.predictor", "Predictor"),
+}
+
+
+def __getattr__(name: str):
+    if name in _LAZY:
+        import importlib  
+
+        mod_path, attr = _LAZY[name]
+        return getattr(importlib.import_module(mod_path), attr)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
