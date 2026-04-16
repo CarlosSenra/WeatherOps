@@ -5,7 +5,12 @@ from __future__ import annotations
 import argparse
 import logging
 
-from src.ml_workstation.evaluation.core import evaluate_run
+
+def evaluate_run(*args, **kwargs):
+    """Lazy proxy so tests can monkeypatch this name on the module."""
+    from src.ml_workstation.evaluation.core import evaluate_run as _impl  # noqa: PLC0415
+
+    return _impl(*args, **kwargs)
 
 logging.basicConfig(
     level=logging.INFO,
