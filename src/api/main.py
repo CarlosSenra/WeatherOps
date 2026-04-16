@@ -1,0 +1,134 @@
+"""Fábrica da aplicação FastAPI para a API de Serving de ML do WeatherOps.
+
+Sequência de inicialização (startup)
+-------------------------------------
+1. Carregar configurações do ambiente / arquivo ``.env``.
+2. Iniciar o DataService: ler arquivos Parquet em memória.
+3. Iniciar o ModelRegistry: carregar modelos em produção do MLflow Registry
+   e preparar metadados do engine (``training_dataset`` / ``scaler``) para
+   cada modelo.
+4. Configurar rastreamento com OpenTelemetry (sem efeito se o endpoint não
+   estiver definido).
+5. Instanciar o Predictor e armazenar tudo em ``app.state``.
+
+A inicialização é totalmente assíncrona. Operações de I/O bloqueantes
+(leitura de Parquet, downloads do MLflow, construção do TimeSeriesDataSet)
+são delegadas a thread pools dentro de cada serviço, para que o event loop
+nunca seja bloqueado.
+
+Sequência de encerramento (shutdown)
+--------------------------------------
+Nenhuma limpeza necessária — os modelos são liberados da memória e os dados
+do Parquet são descartados quando o processo termina.
+"""
+from __future__ import annotations
+
+import logging
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
+import mlflow
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from src.api.config import ALL_SERVING_COLUMNS, get_settings
+from src.api.routers import forecast, health
+from src.api.services.data_service import DataService
+from src.api.services.model_registry import ModelRegistry
+from src.api.services.predictor import Predictor
+from src.api.tracing import TraceIDMiddleware, setup_tracing
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Lifespan
+# ---------------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+
+    # ── 1. Definir URI de rastreamento do MLflow ───────────────────────────
+    if settings.mlflow_tracking_uri:
+        mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+        logger.info("MLflow tracking URI: %s", settings.mlflow_tracking_uri)
+
+    # ── 2. DataService ─────────────────────────────────────────────────────
+    logger.info("Carregando dataset Parquet de %s …", settings.parquet_path)
+    data_service = DataService()
+    await data_service.load(settings.parquet_path, ALL_SERVING_COLUMNS)
+
+    # ── 3. ModelRegistry ───────────────────────────────────────────────────
+    logger.info("Carregando modelos em produção do MLflow Registry …")
+    registry = ModelRegistry()
+    await registry.load_all(
+        configs=settings.registered_models,
+        data_service=data_service,
+        tracking_uri=settings.mlflow_tracking_uri,
+        device=settings.device,
+        local_model_root=settings.weatherops_model_root,
+    )
+
+    # ── 4. Rastreamento ────────────────────────────────────────────────────
+    setup_tracing(
+        service_name=settings.otel_service_name,
+        otlp_endpoint=settings.otel_exporter_otlp_endpoint,
+    )
+
+    # ── 5. Configurar app.state ────────────────────────────────────────────
+    app.state.data_service = data_service
+    app.state.registry = registry
+    app.state.predictor = Predictor(registry, data_service)
+
+    logger.info("Inicialização da API WeatherOps concluída.")
+
+    yield
+
+    logger.info("Encerrando a API WeatherOps.")
+
+
+# ---------------------------------------------------------------------------
+# Fábrica da aplicação
+# ---------------------------------------------------------------------------
+
+
+def create_app() -> FastAPI:
+    """Cria e configura a instância da aplicação FastAPI."""
+    settings = get_settings()
+
+    app = FastAPI(
+        title=settings.api_title,
+        version=settings.api_version,
+        description=settings.api_description,
+        lifespan=lifespan,
+        docs_url="/docs",
+        redoc_url="/redoc",
+    )
+
+    # ── Middlewares ────────────────────────────────────────────────────────
+    app.add_middleware(TraceIDMiddleware)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "POST"],
+        allow_headers=["*"],
+    )
+
+    # ── Roteadores ─────────────────────────────────────────────────────────
+    app.include_router(health.router)
+    app.include_router(forecast.router)
+
+    return app
+
+
+# ---------------------------------------------------------------------------
+# Instância ``app`` no nível do módulo, consumida pelo uvicorn.
+# ---------------------------------------------------------------------------
+
+app = create_app()
