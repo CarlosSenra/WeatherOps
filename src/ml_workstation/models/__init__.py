@@ -1,10 +1,6 @@
-from pytorch_forecasting import TimeSeriesDataSet
-
 from src.ml_workstation.config.training_config import ModelConfig
 from src.ml_workstation.models.interface import ITimeSeriesModel
 from src.ml_workstation.models.lstm import WeatherLSTM
-from src.ml_workstation.models.nbeats import WeatherNBEATS
-from src.ml_workstation.models.tft import WeatherTFT
 from src.ml_workstation.models.transformer import WeatherTransformer
 
 
@@ -32,7 +28,7 @@ def build_model(n_features: int, n_targets: int, horizon: int, config: ModelConf
 
 
 def build_pf_model(
-    dataset: TimeSeriesDataSet,
+    dataset,
     config: ModelConfig,
     learning_rate: float = 1e-3,
     weight_decay: float = 1e-4,
@@ -52,6 +48,9 @@ def build_pf_model(
     Returns:
         Instância de `TemporalFusionTransformer` ou `NBeats` (ambos `LightningModule`).
     """
+    from src.ml_workstation.models.nbeats import WeatherNBEATS 
+    from src.ml_workstation.models.tft import WeatherTFT  
+
     if config.model_type == "tft":
         return WeatherTFT.from_dataset(dataset, config, learning_rate, weight_decay)
     if config.model_type == "nbeats":
@@ -67,6 +66,4 @@ __all__ = [
     "ITimeSeriesModel",
     "WeatherLSTM",
     "WeatherTransformer",
-    "WeatherTFT",
-    "WeatherNBEATS",
 ]

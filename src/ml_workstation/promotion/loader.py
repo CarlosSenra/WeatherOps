@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import joblib
 import mlflow
 import mlflow.pytorch
 import torch
-from sklearn.preprocessing import StandardScaler
+
+if TYPE_CHECKING:
+    from sklearn.preprocessing import StandardScaler
 
 from src.ml_workstation.evaluation.mlflow_helpers import resolve_tracking_uri
 from src.ml_workstation.promotion.export_local import (
