@@ -212,4 +212,24 @@ Nota: avaliacao interativa suportada apenas para modelos LSTM e Transformer. Ver
 - Priorize smoke test antes de treinos longos.
 - Revise metricas de validacao no MLflow antes de promover configuracoes.
 - Mantenha sincronia entre `feature_columns` e schema real em `data/spec`.
+
+## Proximos Passos Apos o Treino
+
+Apos um run bem-sucedido, o modelo pode ser promovido para producao e servido pela API:
+
+```bash
+# Promover o melhor run e exportar para a API
+poetry run python -m src.ml_workstation.promotion.run_promote \
+  --experiment-name weather_forecasting_h72 \
+  --export-dir src/api/ml_models
+```
+
+Em seguida, suba a API de serving:
+
+```bash
+docker compose -f src/api/docker-compose.yml --profile api up --build
+```
+
+Detalhes de promocao: [promotion/PROMOTION.md](promotion/PROMOTION.md).
+Detalhes da API: [src/api/README.md](../api/README.md).
 - Para TFT/NBEATS: confirme que `hora_sin` e `hora_cos` estao presentes em `feature_columns` (classificados como known future reals automaticamente).

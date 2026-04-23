@@ -34,7 +34,8 @@ flowchart TD
     A[data/raw CSV] --> B[data_cleaning]
     B --> C[data_feature_eng]
     C --> D[data/spec Parquet]
-    D --> E[src/ml_workstation]
+    D --> E[src/ml_workstation treino]
+    E --> F[src/api serving]
 ```
 
 ## Componentes Principais
@@ -42,6 +43,10 @@ flowchart TD
 - `data_cleaning`: padronizacao de schema, tratamento de nulos e consistencia de valores.
 - `data_feature_eng`: criacao de variaveis de tempo, lags e agregacoes.
 - `interface/i_data_eng.py`: contrato para pipelines de engenharia de dados.
+
+Documentacao detalhada com exemplos de uso, configuracoes e schema de saida: [data_engineering/README.md](data_engineering/README.md).
+
+Nota: o diretorio `data_analynitcs/` (grafia mantida por compatibilidade) contem utilitarios de graficos exploratórios e nao faz parte do pipeline principal de producao.
 
 ## Boas Praticas
 
