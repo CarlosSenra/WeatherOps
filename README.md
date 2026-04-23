@@ -50,6 +50,29 @@ flowchart LR
 
 ---
 
+## Endpoints Locais
+
+Tabela de todos os serviços acessíveis via `localhost` ao rodar o projeto localmente.
+
+| Serviço | URL | Descrição | Credenciais |
+|---|---|---|---|
+| WeatherOps API | `http://localhost:8888` | Serving de previsões meteorológicas | — |
+| API — Swagger UI | `http://localhost:8888/docs` | Documentação interativa dos endpoints | — |
+| API — ReDoc | `http://localhost:8888/redoc` | Documentação alternativa | — |
+| API — Métricas | `http://localhost:8888/metrics` | Métricas Prometheus (formato `text/plain`) | — |
+| API — Liveness | `http://localhost:8888/health` | Probe de liveness do container | — |
+| API — Readiness | `http://localhost:8888/health/ready` | Probe de readiness (modelos carregados) | — |
+| Prometheus | `http://localhost:9090` | Coleta e consulta de métricas via PromQL | — |
+| Grafana | `http://localhost:3000` | Dashboards de monitoramento | admin / admin |
+| MLflow UI (api compose) | `http://localhost:5001` | Tracking de experimentos (via `src/api/docker-compose.yml`) | — |
+| MLflow UI (workstation) | `http://localhost:5000` | Tracking de experimentos (via `src/ml_workstation/docker-compose.yml`) | — |
+| Airflow Webserver | `http://localhost:8080` | Orquestração de pipelines ETL | airflow / airflow |
+
+> Prometheus e Grafana sobem automaticamente com `docker compose --profile api up` via `src/api/docker-compose.yml`.
+> O datasource do Prometheus é provisionado no Grafana sem configuração manual.
+
+---
+
 ## Pré-Requisitos
 
 | Ferramenta | Versão | Obrigatório |
@@ -121,7 +144,7 @@ WeatherOps/
 | **Visualização** | Plotly |
 | **API** | FastAPI, uvicorn, pydantic-settings |
 | **Cache** | In-memory (padrão) ou Redis |
-| **Observabilidade** | OpenTelemetry (opcional), X-Trace-Id |
+| **Observabilidade** | Prometheus, Grafana, prometheus-fastapi-instrumentator |
 | **Orquestração** | Apache Airflow (CeleryExecutor) |
 | **Containerização** | Docker Compose |
 

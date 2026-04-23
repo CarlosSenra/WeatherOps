@@ -200,10 +200,6 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 3600
     redis_url: str = "redis://localhost:6379"
 
-    # Rastreamento (OpenTelemetry)
-    otel_exporter_otlp_endpoint: str | None = None
-    otel_service_name: str = "weatherops-api"
-
     # Metadados da API
     api_title: str = "WeatherOps ML Serving API"
     api_version: str = "1.0.0"

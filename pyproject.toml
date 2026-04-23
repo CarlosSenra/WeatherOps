@@ -19,6 +19,7 @@ dependencies = [
     "joblib (>=1.4.0,<2.0.0)",
     "fastapi (>=0.115.0,<1.0.0)",
     "uvicorn[standard] (>=0.34.0,<1.0.0)",
+    "prometheus-fastapi-instrumentator (>=7.0.0,<8.0.0)",
     "pytorch-forecasting (>=1.1.0,<2.0.0)",
     "lightning (>=2.4.0,<3.0.0)"
 ]

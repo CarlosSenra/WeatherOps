@@ -7,9 +7,7 @@ Sequência de inicialização (startup)
 3. Iniciar o ModelRegistry: carregar modelos em produção do MLflow Registry
    e preparar metadados do engine (``training_dataset`` / ``scaler``) para
    cada modelo.
-4. Configurar rastreamento com OpenTelemetry (sem efeito se o endpoint não
-   estiver definido).
-5. Instanciar o Predictor e armazenar tudo em ``app.state``.
+4. Instanciar o Predictor e armazenar tudo em ``app.state``.
 
 A inicialização é totalmente assíncrona. Operações de I/O bloqueantes
 (leitura de Parquet, downloads do MLflow, construção do TimeSeriesDataSet)
@@ -32,11 +30,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.config import ALL_SERVING_COLUMNS, get_settings
+from src.api.metrics import setup_metrics
 from src.api.routers import forecast, health
 from src.api.services.data_service import DataService
 from src.api.services.model_registry import ModelRegistry
 from src.api.services.predictor import Predictor
-from src.api.tracing import TraceIDMiddleware, setup_tracing
 
 logging.basicConfig(
     level=logging.INFO,
@@ -75,13 +73,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         local_model_root=settings.weatherops_model_root,
     )
 
-    # ── 4. Rastreamento ────────────────────────────────────────────────────
-    setup_tracing(
-        service_name=settings.otel_service_name,
-        otlp_endpoint=settings.otel_exporter_otlp_endpoint,
-    )
-
-    # ── 5. Configurar app.state ────────────────────────────────────────────
+    # ── 4. Configurar app.state ────────────────────────────────────────────
     app.state.data_service = data_service
     app.state.registry = registry
     app.state.predictor = Predictor(registry, data_service)
@@ -112,7 +104,6 @@ def create_app() -> FastAPI:
     )
 
     # ── Middlewares ────────────────────────────────────────────────────────
-    app.add_middleware(TraceIDMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -123,6 +114,9 @@ def create_app() -> FastAPI:
     # ── Roteadores ─────────────────────────────────────────────────────────
     app.include_router(health.router)
     app.include_router(forecast.router)
+
+    # ── Métricas Prometheus ────────────────────────────────────────────────
+    setup_metrics(app)
 
     return app
 

@@ -18,9 +18,14 @@ src/api/
 ├── config.py                # REGISTERED_MODELS, ServingModelConfig, Settings
 ├── cache.py                 # Cache TTL em memória ou Redis
 ├── dependencies.py          # Injetores de dependência FastAPI
-├── tracing.py               # Middleware X-Trace-Id + configuração OpenTelemetry
+├── metrics.py               # Instrumentação Prometheus (expõe /metrics)
+├── prometheus.yml           # Configuração de scrape do Prometheus
 ├── Dockerfile               # Imagem de serving (Python 3.12-slim + Poetry)
-├── docker-compose.yml       # Serviços: weatherops-api, mlflow-ui, otel-collector
+├── docker-compose.yml       # Serviços: weatherops-api, mlflow-ui, prometheus, grafana
+├── grafana/
+│   └── provisioning/
+│       └── datasources/
+│           └── prometheus.yml  # Datasource Prometheus provisionado automaticamente
 ├── engines/
 │   ├── base.py              # BaseInferenceEngine (interface abstrata) + InferenceContext
 │   ├── pytorch_forecasting.py  # Engine TFT/N-BEATS (TimeSeriesDataSet + model.predict)
@@ -156,6 +161,19 @@ Podes enviar `reference_date` só com a data (meia-noite desse dia) ou com data 
 
 A documentação interativa completa está disponível em `http://localhost:8888/docs`.
 
+### Endpoints da API
+
+| Endpoint | Método | Descrição |
+|---|---|---|
+| `/health` | GET | Probe de liveness — retorna `200` enquanto o processo estiver ativo |
+| `/health/ready` | GET | Probe de readiness — `200` quando todos os modelos estão carregados |
+| `/v1/forecast/72` | POST | Previsão de temperatura para 72 horas |
+| `/v1/forecast/168` | POST | Previsão de temperatura para 168 horas (7 dias) |
+| `/v1/forecast/336` | POST | Previsão de temperatura para 336 horas (14 dias) |
+| `/metrics` | GET | Métricas Prometheus (coletadas automaticamente pelo Prometheus) |
+| `/docs` | GET | Documentação interativa Swagger UI |
+| `/redoc` | GET | Documentação alternativa ReDoc |
+
 ## Variáveis de Ambiente
 
 Todas as variáveis são lidas por `config.Settings` (Pydantic Settings). Podem ser
@@ -170,8 +188,6 @@ passadas diretamente ou via arquivo `.env` na raiz do projeto.
 | `CACHE_BACKEND` | `memory` | Backend do cache: `memory` (padrão) ou `redis` |
 | `CACHE_TTL_SECONDS` | `3600` | Tempo de vida das entradas no cache (segundos) |
 | `REDIS_URL` | `redis://localhost:6379` | URL de conexão Redis (apenas quando `CACHE_BACKEND=redis`) |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | — | Endpoint OTLP HTTP (ex.: `http://otel-collector:4318`); deixe vazio para desativar |
-| `OTEL_SERVICE_NAME` | `weatherops-api` | Nome do serviço exibido no coletor OTel |
 
 ## Como Executar
 
@@ -256,24 +272,57 @@ CACHE_BACKEND=redis REDIS_URL=redis://localhost:6379 docker compose ...
 O backend padrão (em memória) é adequado para implantações de processo único.
 Para múltiplos workers ou pods, use Redis para compartilhar estado.
 
-## Rastreamento (Observabilidade)
+## Monitoramento (Prometheus + Grafana)
 
-Todo response carrega o cabeçalho `X-Trace-Id` (UUID por requisição), ativo
-independentemente de configuração — útil para correlação de logs.
+A API é instrumentada automaticamente via `prometheus-fastapi-instrumentator`.
+O endpoint `/metrics` expõe métricas no formato Prometheus sem nenhuma configuração adicional.
 
-Para habilitar o rastreamento completo via OpenTelemetry, instale os pacotes
-opcionais e defina o endpoint:
+### Métricas expostas
+
+| Métrica | Tipo | Descrição |
+|---|---|---|
+| `http_requests_total` | Counter | Total de requisições por rota, método e status HTTP |
+| `http_request_duration_highr_seconds` | Histogram | Latência com muitos buckets (ideal para percentis p95/p99) |
+| `http_request_duration_seconds` | Histogram | Latência com poucos buckets, agrupada por handler |
+| `http_requests_in_progress` | Gauge | Requisições sendo processadas no momento |
+
+### Subindo o stack completo
 
 ```bash
-pip install opentelemetry-sdk \
-            opentelemetry-instrumentation-fastapi \
-            opentelemetry-exporter-otlp-proto-http
-
-OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 docker compose ...
+# A partir da raiz do repositório
+docker compose -f src/api/docker-compose.yml --profile api up -d
 ```
 
-O coletor OTel está comentado em `docker-compose.yml` e pode ser ativado
-descomentando o serviço `otel-collector`.
+Isso sobe a API, o Prometheus e o Grafana juntos.
+
+| Serviço | URL | Credenciais |
+|---|---|---|
+| Prometheus | `http://localhost:9090` | — |
+| Grafana | `http://localhost:3000` | admin / admin |
+
+O datasource do Prometheus é provisionado automaticamente no Grafana ao subir o container.
+
+### Queries PromQL para dashboards
+
+```promql
+# Throughput de requisições por segundo (última 1 min)
+rate(http_requests_total[1m])
+
+# Latência p95 (última 5 min)
+histogram_quantile(0.95, rate(http_request_duration_highr_seconds_bucket[5m]))
+
+# Requisições simultâneas em andamento
+http_requests_in_progress
+
+# Taxa de erros (status 5xx)
+rate(http_requests_total{status=~"5.."}[1m])
+```
+
+### Verificar métricas diretamente
+
+```bash
+curl http://localhost:8888/metrics
+```
 
 ## Dependências
 
@@ -287,4 +336,4 @@ descomentando o serviço `otel-collector`.
 | `torch` | Inferência PyTorch (ambos os engines) |
 | `pandas` / `pyarrow` | Leitura de Parquet e manipulação de janelas de contexto |
 | `redis` | Backend de cache Redis (opcional; `pip install redis`) |
-| `opentelemetry-sdk` | Rastreamento distribuído (opcional) |
+| `prometheus-fastapi-instrumentator` | Instrumentação automática de métricas HTTP |
