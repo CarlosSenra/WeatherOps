@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from src.api.cache import get_cache
 from src.api.config import VALID_HORIZONS
 from src.api.dependencies import get_predictor
+from src.api.metrics import cache_hits, cache_misses, inference_duration
 from src.api.schemas.forecast import ForecastRequest, ForecastResponse
 from src.api.services.predictor import Predictor
 
@@ -82,10 +83,14 @@ async def forecast(
 
     cached = cache.get(cache_key)
     if cached is not None:
+        cache_hits.inc()
         trace_id = getattr(http_request.state, "trace_id", "")
         logger.debug("Cache hit para chave %s (trace_id=%s)", cache_key, trace_id)
         return ForecastResponse.model_validate(cached)
 
+    cache_misses.inc()
     response = await predictor.predict(horizon=horizon, request=request_body)
+    model_key = f"{request_body.model_type}_{horizon}"
+    inference_duration.labels(model_key=model_key).observe(response.latency_ms / 1000)
     cache.set(cache_key, response.model_dump(mode="json"))
     return response
