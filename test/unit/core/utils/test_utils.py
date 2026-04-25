@@ -6,8 +6,22 @@ from pathlib import Path
 import pytest
 
 from core.utils.models.file_management import MapCsvFilesInput, MapCsvFilesOutput
-from core.utils.manege_files import map_csv_files_by_name
-from core.utils import MapCsvFilesInput as UtilsInput, MapCsvFilesOutput as UtilsOutput, map_csv_files_by_name as util_fn
+from core.utils.manege_files import (
+    apply_municipio_filters,
+    map_csv_files_by_name,
+    map_inmet_csv_files_by_municipio,
+    parse_inmet_filename,
+    slugify_municipio,
+)
+from core.utils import (
+    MapCsvFilesInput as UtilsInput,
+    MapCsvFilesOutput as UtilsOutput,
+    apply_municipio_filters as util_apply_municipio_filters,
+    map_csv_files_by_name as util_fn,
+    map_inmet_csv_files_by_municipio as util_map_inmet_csv_files_by_municipio,
+    parse_inmet_filename as util_parse_inmet_filename,
+    slugify_municipio as util_slugify_municipio,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +116,55 @@ def test_same_file_matches_multiple_terms(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# INMET parser + slug + filters
+# ---------------------------------------------------------------------------
+
+def test_parse_inmet_filename_single_word_city() -> None:
+    parsed = parse_inmet_filename("INMET_CO_DF_A001_BRASILIA_01-01-2026_A_31-03-2026.CSV")
+    assert parsed == ("BRASILIA", "brasilia")
+
+
+def test_parse_inmet_filename_multi_word_city() -> None:
+    parsed = parse_inmet_filename("INMET_S_RS_A881_DOM PEDRITO_01-01-2026_A_31-03-2026.CSV")
+    assert parsed == ("DOM PEDRITO", "dom_pedrito")
+
+
+def test_parse_inmet_filename_returns_none_for_invalid_pattern() -> None:
+    assert parse_inmet_filename("foo.csv") is None
+
+
+def test_slugify_municipio_removes_accents_and_special_chars() -> None:
+    assert slugify_municipio("São José dos Pinhais") == "sao_jose_dos_pinhais"
+
+
+def test_map_inmet_csv_files_by_municipio_groups_by_slug(tmp_path: Path) -> None:
+    y2026 = tmp_path / "2026"
+    y2026.mkdir()
+    (y2026 / "INMET_CO_DF_A001_BRASILIA_01-01-2026_A_31-03-2026.CSV").write_text("x\n1")
+    (y2026 / "INMET_S_RS_A881_DOM PEDRITO_01-01-2026_A_31-03-2026.CSV").write_text("x\n1")
+    (y2026 / "other.csv").write_text("x\n1")
+
+    grouped = map_inmet_csv_files_by_municipio(str(tmp_path))
+    assert sorted(grouped.keys()) == ["brasilia", "dom_pedrito"]
+    assert len(grouped["brasilia"]) == 1
+    assert len(grouped["dom_pedrito"]) == 1
+
+
+def test_apply_municipio_filters_include_exclude_and_override() -> None:
+    grouped = {
+        "brasilia": ["/raw/a.csv"],
+        "dom_pedrito": ["/raw/b.csv"],
+    }
+    out = apply_municipio_filters(
+        grouped_files=grouped,
+        include=["df_brasilia", "porto_alegre"],
+        exclude=["porto_alegre"],
+        slug_overrides={"brasilia": "df_brasilia"},
+    )
+    assert out == {"df_brasilia": ["/raw/a.csv"]}
+
+
+# ---------------------------------------------------------------------------
 # Re-exports from core.utils
 # ---------------------------------------------------------------------------
 
@@ -109,3 +172,7 @@ def test_utils_module_exports_all_symbols() -> None:
     assert UtilsInput is MapCsvFilesInput
     assert UtilsOutput is MapCsvFilesOutput
     assert util_fn is map_csv_files_by_name
+    assert util_slugify_municipio is slugify_municipio
+    assert util_parse_inmet_filename is parse_inmet_filename
+    assert util_map_inmet_csv_files_by_municipio is map_inmet_csv_files_by_municipio
+    assert util_apply_municipio_filters is apply_municipio_filters
