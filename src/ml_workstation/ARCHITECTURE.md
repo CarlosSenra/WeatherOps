@@ -175,10 +175,10 @@ sequenceDiagram
 
 ## Acoplamentos Criticos
 
-1. Schema de `data/spec` precisa bater com `feature_columns` dos JSONs.
+1. Schema de `data/spec/<municipio>/` precisa bater com `feature_columns` dos JSONs de experimento.
 2. Para TFT: `hora_sin` e `hora_cos` devem estar em `feature_columns` para serem classificados como `known_future_reals`; ausencia degrada o modelo.
 3. Formato de checkpoint: LSTM/Transformer salvam `state_dict` em `.pt`; TFT/NBEATS salvam checkpoint Lightning em `.ckpt`.
-4. Paths de volume no Docker devem refletir os caminhos esperados no runtime.
+4. Paths de volume no Docker: `data/spec` e montado como arvore inteira (`../../data/spec:/app/data/spec:ro`), portanto subpastas por municipio ficam disponíveis automaticamente em `/app/data/spec/<municipio>`. O `parquet_path` no JSON de experimento deve apontar para a subpasta do municipio desejado (ex: `/app/data/spec/salvador`).
 5. O `TimeSeriesDataSet` de validacao/teste deve ser criado com `from_dataset()` a partir do dataset de treino para garantir normalizacao consistente.
 
 ## Decisoes Operacionais Atuais

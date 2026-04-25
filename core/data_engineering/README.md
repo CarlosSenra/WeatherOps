@@ -146,16 +146,17 @@ from core.data_engineering.data_feature_eng.feature_eng import WeatherFeatureEng
 import glob
 
 # 1. Limpeza
-csv_paths = glob.glob("data/raw/salvador_*.csv")
+csv_paths = glob.glob("data/raw/*/salvador_*.csv")
 cleaner = DataCleaning(csv_paths=csv_paths)
-df_clean = cleaner.processed_data
+df_clean = cleaner.concat_csv()
 
 # 2. Feature engineering
 engineer = WeatherFeatureEngineer()
 df_features = engineer.transform(df_clean)
 
-# 3. Salvar como Parquet
-df_features.to_parquet("data/spec/salvador_features.parquet")
+# 3. Salvar como Parquet (padrão por município)
+Path("data/spec/salvador").mkdir(parents=True, exist_ok=True)
+df_features.to_parquet("data/spec/salvador/dados.parquet")
 
 print(f"Parquet gerado: {len(df_features)} linhas, {len(df_features.columns)} colunas")
 print(f"Período: {df_features.index.min()} → {df_features.index.max()}")
@@ -166,7 +167,7 @@ print(f"Período: {df_features.index.min()} → {df_features.index.max()}")
 ```python
 import pandas as pd
 
-df = pd.read_parquet("data/spec/salvador_features.parquet")
+df = pd.read_parquet("data/spec/salvador/dados.parquet")
 print(df.dtypes)
 print(df.isnull().sum())  # verificar nulos residuais nas bordas (lag/rolling)
 ```
@@ -179,8 +180,10 @@ Os DAGs em `src/data_airflow/dags/` executam esse pipeline automaticamente:
 
 | DAG | Entrada | Saída | Aciona |
 |-----|---------|-------|--------|
-| `data_cleaning` | `data/raw/*.csv` | `data/staging/*.csv` | Manual |
-| `data_feature_engineering` | `data/staging/*.csv` | `data/spec/*.parquet` | Manual |
+| `data_cleaning` | `data/raw/<ano>/*.csv` | `data/staging/<municipio>/<municipio>.csv` | Manual |
+| `data_feature_engineering` | `data/staging/<municipio>/<municipio>.csv` | `data/spec/<municipio>/dados.parquet` | Manual |
+
+Os municípios processados são descobertos automaticamente pelos nomes de arquivos INMET em `data/raw/`, com filtros configuráveis em `src/data_airflow/config/municipios.yml`.
 
 Para rodar via Airflow, consulte `src/data_airflow/README.md`.
 

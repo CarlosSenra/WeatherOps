@@ -75,6 +75,15 @@ flowchart LR
 - Padrao de nome: `<modelo>_<horizonte>_v<versao>.json`.
 - Toda configuracao de experimento deve manter `"device": "cuda"`.
 - Horizontes disponiveis: `h72` (3 dias), `h168` (7 dias), `h336` (14 dias).
+- O campo `data.parquet_path` deve apontar para a subpasta do municipio em `data/spec/`:
+
+```json
+"data": {
+  "parquet_path": "/app/data/spec/salvador"
+}
+```
+
+Para treinar com um municipio diferente, altere `parquet_path` para a subpasta correspondente (ex: `/app/data/spec/recife`). Os municipios disponiveis sao os que possuem subpasta em `data/spec/`, gerada pela DAG `data_feature_engineering`.
 
 ## Dependencias
 

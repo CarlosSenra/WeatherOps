@@ -9,7 +9,7 @@
     "checkpoint_dir": "/app/artifacts",
     "device": "cuda",
     "data": {
-        "parquet_path": "/app/data/spec",
+        "parquet_path": "/app/data/spec/salvador",
         "target_columns": ["temp_ar_c"],
         "sequence_length": 24,
         "horizon": 1,

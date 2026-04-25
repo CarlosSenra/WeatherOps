@@ -76,6 +76,17 @@ def test_resolve_parquet_path_prefers_local_workspace(tmp_path: Path, monkeypatc
     assert resolved == str(spec_dir)
 
 
+def test_resolve_parquet_path_resolves_municipio_subpath(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    spec_municipio = tmp_path / "data" / "spec" / "salvador"
+    spec_municipio.mkdir(parents=True)
+
+    monkeypatch.setattr(mlflow_helpers, "workspace_root", lambda: tmp_path)
+
+    resolved = mlflow_helpers.resolve_parquet_path("/app/data/spec/salvador")
+
+    assert resolved == str(spec_municipio)
+
+
 def test_load_model_with_fallback_uses_runs_uri(monkeypatch: pytest.MonkeyPatch) -> None:
     run = SimpleNamespace(info=SimpleNamespace(run_id="abc123", experiment_id="1"))
     model = DummyModel()

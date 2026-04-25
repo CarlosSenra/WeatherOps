@@ -97,9 +97,11 @@ WeatherOps/
 ├── core/                          # Módulo de engenharia de dados
 │   └── data_engineering/          # DataCleaning + WeatherFeatureEngineer
 ├── data/
-│   ├── raw/                       # CSVs brutos do INMET
-│   ├── staging/                   # CSVs limpos (intermediário)
-│   └── spec/                      # Parquets com features (entrada do treino)
+│   ├── raw/                       # CSVs brutos do INMET (por ano)
+│   ├── staging/
+│   │   └── <municipio>/           # CSV limpo por município (ex: salvador/salvador.csv)
+│   └── spec/
+│       └── <municipio>/           # Parquet com features por município (ex: salvador/dados.parquet)
 ├── notebooks/                     # Experimentos exploratórios
 ├── src/
 │   ├── data_airflow/              # DAGs Airflow
@@ -214,8 +216,9 @@ Acesso: `http://localhost:8080` (usuário: `airflow`, senha: `airflow`)
 Executar ingestão INMET por intervalo de anos:
 
 1. Ajustar `start_year` e `end_year` em `src/data_airflow/config/inmet_scraping.yml`
-2. Rodar DAG `inmet_download_raw` no Airflow UI
-3. Rodar `data_cleaning` e depois `data_feature_engineering`
+2. (Opcional) Ajustar filtros de municípios em `src/data_airflow/config/municipios.yml` (`include`, `exclude`, `slug_overrides`)
+3. Rodar DAG `inmet_download_raw` no Airflow UI
+4. Rodar `data_cleaning` e depois `data_feature_engineering`
 
 ---
 
