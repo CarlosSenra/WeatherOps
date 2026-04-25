@@ -59,6 +59,83 @@ Ordem recomendada de execucao no Airflow:
 2. `data_cleaning`
 3. `data_feature_engineering`
 
+## Configuracao de municipios
+
+Municipios processados pelas DAGs de limpeza e feature engineering sao
+descobertos automaticamente a partir dos arquivos INMET em `data/raw/`.
+Os filtros e overrides sao definidos em:
+
+- `src/data_airflow/config/municipios.yml`
+
+Formato:
+
+```yaml
+mode: all
+include: []
+exclude: []
+slug_overrides: {}
+```
+
+Exemplos de nomes detectados:
+
+- `INMET_CO_DF_A001_BRASILIA_01-01-2026_A_31-03-2026.CSV` -> `brasilia`
+- `INMET_S_RS_A881_DOM PEDRITO_01-01-2026_A_31-03-2026.CSV` -> `dom_pedrito`
+
+Para restringir execucao, use:
+- `include`: processa somente os slugs listados;
+- `exclude`: remove slugs da lista final;
+- `slug_overrides`: renomeia slugs detectados.
+
+Comportamento das DAGs com multiplos municipios:
+
+- `data_cleaning`: descobre e agrupa CSVs por municipio, salva em `data/staging/<municipio_slug>/<municipio_slug>.csv` (sobrescreve, sem timestamp).
+- `data_feature_engineering`: le o CSV de staging por municipio, aplica feature engineering e salva em `data/spec/<municipio_slug>/dados.parquet` (sobrescreve, sem timestamp).
+
+### Exemplos simples de configuracao
+
+Todos os exemplos abaixo sao configurados em `src/data_airflow/config/municipios.yml`.
+
+#### 1) Processar somente Salvador
+
+```yaml
+mode: all
+include:
+  - salvador
+exclude: []
+slug_overrides: {}
+```
+
+#### 2) Processar somente um municipio (exemplo: Brasilia)
+
+```yaml
+mode: all
+include:
+  - brasilia
+exclude: []
+slug_overrides: {}
+```
+
+#### 3) Processar dois ou mais municipios
+
+```yaml
+mode: all
+include:
+  - salvador
+  - brasilia
+  - dom_pedrito
+exclude: []
+slug_overrides: {}
+```
+
+#### 4) Processar todos os municipios detectados
+
+```yaml
+mode: all
+include: []
+exclude: []
+slug_overrides: {}
+```
+
 ## Volumes montados (resumo)
 
 - `./src/data_airflow/dags` -> `/opt/airflow/dags`
