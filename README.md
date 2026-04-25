@@ -171,7 +171,7 @@ WeatherOps/
 
 Sequência para ir do zero até a API servindo previsões:
 
-1. **Preparar dados brutos** — colocar CSVs do INMET em `data/raw/`
+1. **Popular dados brutos** — via DAG `inmet_download_raw` (anos em `src/data_airflow/config/inmet_scraping.yml`) ou colocando CSVs manualmente em `data/raw/`
 2. **Executar limpeza** — via Airflow DAG `data_cleaning` ou diretamente com `DataCleaning`
 3. **Executar feature engineering** — via Airflow DAG `data_feature_engineering` ou `WeatherFeatureEngineer`
 4. **Treinar modelo** — `docker compose --profile train run --rm trainer --config //app/experiments/tft/tft_h72_v1.json`
@@ -210,6 +210,12 @@ docker compose -f docker-compose-airflow.yaml up -d
 ```
 
 Acesso: `http://localhost:8080` (usuário: `airflow`, senha: `airflow`)
+
+Executar ingestão INMET por intervalo de anos:
+
+1. Ajustar `start_year` e `end_year` em `src/data_airflow/config/inmet_scraping.yml`
+2. Rodar DAG `inmet_download_raw` no Airflow UI
+3. Rodar `data_cleaning` e depois `data_feature_engineering`
 
 ---
 
