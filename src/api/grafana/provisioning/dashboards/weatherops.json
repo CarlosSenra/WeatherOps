@@ -85,6 +85,70 @@
       ],
       "title": "Latência HTTP",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "auto" },
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.15 },
+              { "color": "red", "value": 0.25 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 9 },
+      "id": 3,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "weatherops_model_mape{job=\"weatherops-api\"}",
+          "legendFormat": "{{model_key}} / {{bucket}}",
+          "refId": "A"
+        }
+      ],
+      "title": "MAPE por Modelo e Bucket",
+      "description": "Erro percentual absoluto médio por horizonte. Amarelo > 15%, Vermelho > 25%.",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10, "showPoints": "auto" },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 9 },
+      "id": 4,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "weatherops_model_mae{job=\"weatherops-api\"}",
+          "legendFormat": "{{model_key}} / {{bucket}}",
+          "refId": "A"
+        }
+      ],
+      "title": "MAE por Modelo e Bucket",
+      "description": "Erro absoluto médio em °C por horizonte temporal.",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",

@@ -31,11 +31,15 @@ COPY pyproject.toml poetry.lock /app/
 RUN poetry --version && poetry check --lock
 RUN --mount=type=cache,target=/root/.cache/pypoetry \
     --mount=type=cache,target=/root/.cache/pip \
-    poetry install --only main --no-root
+    poetry install --only api --no-root
 
 # ── Application code ──────────────────────────────────────────────────────────
-COPY core/ /app/core/
-COPY src/  /app/src/
+COPY src/api/ /app/src/api/
+COPY src/ml_workstation/config/ /app/src/ml_workstation/config/
+COPY src/ml_workstation/data/ /app/src/ml_workstation/data/
+COPY src/ml_workstation/evaluation/mlflow_helpers.py /app/src/ml_workstation/evaluation/mlflow_helpers.py
+COPY src/ml_workstation/models/ /app/src/ml_workstation/models/
+COPY src/ml_workstation/promotion/ /app/src/ml_workstation/promotion/
 
 # ── Runtime directories (mounted via docker-compose volumes) ──────────────────
 # /app/mlruns        → MLflow tracking store (shared with trainer, read-only)
