@@ -6,9 +6,10 @@ horárias de temperatura para horizontes de 72, 168 e 336 horas.
 
 ## Documentos Relacionados
 
-- Treinamento de modelos: `src/ml_workstation/README.md`
-- Promoção para produção: `src/ml_workstation/promotion/PROMOTION.md`
-- Guia de desenvolvimento: `docs/DEVELOPMENT_SETUP.md`
+- Treinamento de modelos: `../ml_workstation/README.md`
+- Promoção para produção: `../ml_workstation/promotion/PROMOTION.md`
+- Monitoramento do modelo: `../../docs/MODEL_MONITORING.md`
+- Guia de desenvolvimento: `../../docs/DEVELOPMENT_SETUP.md`
 
 ## Estrutura
 
@@ -24,8 +25,10 @@ src/api/
 ├── docker-compose.yml       # Serviços: weatherops-api, mlflow-ui, prometheus, grafana
 ├── grafana/
 │   └── provisioning/
-│       └── datasources/
-│           └── prometheus.yml  # Datasource Prometheus provisionado automaticamente
+│       ├── datasources/
+│       │   └── prometheus.yml  # Datasource Prometheus provisionado automaticamente
+│       └── dashboards/
+│           └── weatherops.json # Dashboard API + qualidade do modelo
 ├── engines/
 │   ├── base.py              # BaseInferenceEngine (interface abstrata) + InferenceContext
 │   ├── pytorch_forecasting.py  # Engine TFT/N-BEATS (TimeSeriesDataSet + model.predict)
@@ -37,8 +40,10 @@ src/api/
 │   ├── common.py            # ForecastPoint, ErrorResponse
 │   └── forecast.py          # ForecastRequest, ForecastResponse
 └── services/
+    ├── accuracy_evaluator.py  # Avalia MAE/RMSE/MAPE em background
     ├── data_service.py      # Carrega Parquet em memória e serve janelas de contexto
     ├── model_registry.py    # Carrega e mantém ModelEntry por chave (ex.: "tft_72")
+    ├── prediction_logger.py # Persiste prediction_log e accuracy_log em SQLite
     └── predictor.py         # Orquestra uma requisição de inferência de ponta a ponta
 ```
 
@@ -188,6 +193,8 @@ passadas diretamente ou via arquivo `.env` na raiz do projeto.
 | `CACHE_BACKEND` | `memory` | Backend do cache: `memory` (padrão) ou `redis` |
 | `CACHE_TTL_SECONDS` | `3600` | Tempo de vida das entradas no cache (segundos) |
 | `REDIS_URL` | `redis://localhost:6379` | URL de conexão Redis (apenas quando `CACHE_BACKEND=redis`) |
+| `ACCURACY_DB_PATH` | `/app/data/accuracy.db` | Banco SQLite com histórico de previsões e avaliações de acurácia |
+| `ACCURACY_EVAL_INTERVAL_SECONDS` | `3600` | Intervalo do worker que calcula MAE/RMSE/MAPE das previsões avaliáveis |
 
 ## Como Executar
 
@@ -276,6 +283,9 @@ Para múltiplos workers ou pods, use Redis para compartilhar estado.
 
 A API é instrumentada automaticamente via `prometheus-fastapi-instrumentator`.
 O endpoint `/metrics` expõe métricas no formato Prometheus sem nenhuma configuração adicional.
+Além das métricas HTTP, a API registra latência de inferência, uso de cache e
+qualidade do modelo em produção. O guia detalhado está em
+`../../docs/MODEL_MONITORING.md`.
 
 ### Métricas expostas
 
@@ -285,6 +295,30 @@ O endpoint `/metrics` expõe métricas no formato Prometheus sem nenhuma configu
 | `http_request_duration_highr_seconds` | Histogram | Latência com muitos buckets (ideal para percentis p95/p99) |
 | `http_request_duration_seconds` | Histogram | Latência com poucos buckets, agrupada por handler |
 | `http_requests_in_progress` | Gauge | Requisições sendo processadas no momento |
+| `weatherops_inference_duration_seconds` | Histogram | Latência de inferência por `model_key` |
+| `weatherops_cache_hits_total` | Counter | Respostas servidas diretamente do cache |
+| `weatherops_cache_misses_total` | Counter | Requisições que exigiram nova inferência |
+| `weatherops_model_mae` | Gauge | MAE por `model_key` e bucket de horizonte |
+| `weatherops_model_rmse` | Gauge | RMSE por `model_key` e bucket de horizonte |
+| `weatherops_model_mape` | Gauge | MAPE por `model_key` e bucket de horizonte |
+
+### Monitoramento de qualidade do modelo
+
+Em cache miss, o endpoint de forecast registra a previsão em background no
+`PredictionLogger`. O `AccuracyEvaluator` roda periodicamente, busca previsões
+cujo horizonte já transcorreu, consulta os valores reais no Parquet via
+`DataService`, calcula MAE/RMSE/MAPE e atualiza os gauges Prometheus.
+
+Os buckets usados para análise são:
+
+| Bucket | Intervalo |
+|---|---|
+| `near` | horas 1 a 24 |
+| `mid` | horas 25 a 72 |
+| `far` | horas 73 em diante |
+
+As métricas `weatherops_model_*` aparecem somente quando há previsões
+avaliáveis e dados reais correspondentes em `data/spec`.
 
 ### Subindo o stack completo
 
@@ -309,13 +343,25 @@ O datasource do Prometheus é provisionado automaticamente no Grafana ao subir o
 rate(http_requests_total[1m])
 
 # Latência p95 (última 5 min)
-histogram_quantile(0.95, rate(http_request_duration_highr_seconds_bucket[5m]))
+histogram_quantile(
+  0.95,
+  sum by (le) (rate(http_request_duration_highr_seconds_bucket{job="weatherops-api"}[5m]))
+)
 
 # Requisições simultâneas em andamento
 http_requests_in_progress
 
 # Taxa de erros (status 5xx)
 rate(http_requests_total{status=~"5.."}[1m])
+
+# MAPE por modelo e bucket
+weatherops_model_mape{job="weatherops-api"}
+
+# Latência de inferência p95 por modelo
+histogram_quantile(
+  0.95,
+  sum by (model_key, le) (rate(weatherops_inference_duration_seconds_bucket{job="weatherops-api"}[5m]))
+)
 ```
 
 ### Verificar métricas diretamente

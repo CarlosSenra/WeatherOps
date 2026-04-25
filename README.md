@@ -12,7 +12,7 @@ O WeatherOps conecta cinco blocos principais em um pipeline ponta a ponta:
 2. **Orquestração de pipelines** em `src/data_airflow/` — DAGs Airflow para automatizar o ETL
 3. **Treinamento e tracking** em `src/ml_workstation/` — quatro arquiteturas de deep learning com MLflow
 4. **Promoção de modelos** via MLflow Model Registry — governança e controle de versão de produção
-5. **Serving de previsões** em `src/api/` — API FastAPI servindo previsões horárias de temperatura
+5. **Serving e monitoramento** em `src/api/` — API FastAPI com métricas Prometheus/Grafana e avaliação online de qualidade
 
 ---
 
@@ -34,6 +34,9 @@ flowchart LR
     J --> L[API FastAPI :8888]
     K --> L
     L --> M[POST /v1/forecast\n72 | 168 | 336h]
+    L --> N[Prometheus + Grafana\nmetricas operacionais]
+    M --> O[PredictionLogger + AccuracyEvaluator\nMAE RMSE MAPE]
+    O --> N
 ```
 
 ---
@@ -45,8 +48,9 @@ flowchart LR
 | **Core** | `core/` | Limpeza de dados e geração de features | [core/README.md](core/README.md) |
 | **Airflow** | `src/data_airflow/` | Orquestração do pipeline de dados | [src/data_airflow/README.md](src/data_airflow/README.md) |
 | **ML Workstation** | `src/ml_workstation/` | Treinamento, tracking, avaliação e promoção | [src/ml_workstation/README.md](src/ml_workstation/README.md) |
-| **API de Serving** | `src/api/` | Previsões horárias via REST | [src/api/README.md](src/api/README.md) |
-| **Documentação** | `docs/` | Setup, pipeline, troubleshooting | [docs/](docs/) |
+| **API de Serving** | `src/api/` | Previsões horárias via REST, métricas e monitoramento online | [src/api/README.md](src/api/README.md) |
+| **Monitoramento** | `docs/MODEL_MONITORING.md` | Prometheus, Grafana, logging de previsões e métricas de qualidade do modelo | [docs/MODEL_MONITORING.md](docs/MODEL_MONITORING.md) |
+| **Documentação** | `docs/` | Setup, pipeline, monitoramento e troubleshooting | [docs/](docs/) |
 
 ---
 
@@ -96,10 +100,6 @@ WeatherOps/
 │   ├── raw/                       # CSVs brutos do INMET
 │   ├── staging/                   # CSVs limpos (intermediário)
 │   └── spec/                      # Parquets com features (entrada do treino)
-├── docs/                          # Documentação geral
-│   ├── DEVELOPMENT_SETUP.md
-│   ├── PIPELINE_FLOW.md
-│   └── TROUBLESHOOTING.md
 ├── notebooks/                     # Experimentos exploratórios
 ├── src/
 │   ├── data_airflow/              # DAGs Airflow
@@ -154,12 +154,6 @@ WeatherOps/
 
 | Documento | Conteúdo |
 |-----------|---------|
-| [docs/OVERVIEW.md](docs/OVERVIEW.md) | **Arquitetura geral** — grafos do sistema completo com todos os componentes |
-| [docs/DATA_ENGINEERING_WORKFLOW.md](docs/DATA_ENGINEERING_WORKFLOW.md) | **Fluxo ETL detalhado** — DataCleaning, features, DAGs Airflow com grafos passo a passo |
-| [docs/ML_PIPELINE_WORKFLOW.md](docs/ML_PIPELINE_WORKFLOW.md) | **Pipeline de ML detalhado** — treinamento, promoção e ciclo de inferência da API com grafos |
-| [docs/DEVELOPMENT_SETUP.md](docs/DEVELOPMENT_SETUP.md) | Setup do ambiente, Docker, API e fluxo de desenvolvimento |
-| [docs/PIPELINE_FLOW.md](docs/PIPELINE_FLOW.md) | Fluxo ponta a ponta com contratos entre camadas |
-| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Erros comuns e soluções (treino, Airflow e API) |
 | [core/README.md](core/README.md) | Módulo de engenharia de dados |
 | [core/ARCHITECTURE.md](core/ARCHITECTURE.md) | Arquitetura e acoplamentos do core |
 | [core/data_engineering/README.md](core/data_engineering/README.md) | DataCleaning, WeatherFeatureEngineer, schema de saída |
@@ -184,6 +178,7 @@ Sequência para ir do zero até a API servindo previsões:
 5. **Avaliar run** — `poetry run python -m src.ml_workstation.evaluation.run_evaluation --run-id <RUN_ID>`
 6. **Promover modelo** — `poetry run python -m src.ml_workstation.promotion.run_promote --experiment-name weather_forecasting_h72 --export-dir src/api/ml_models`
 7. **Subir API** — `docker compose -f src/api/docker-compose.yml --profile api up --build`
+8. **Monitorar serving e qualidade** — acompanhar `/metrics`, Prometheus, Grafana e os gauges `weatherops_model_*`
 
 ---
 
@@ -313,6 +308,13 @@ Documentação interativa: `http://localhost:8888/docs`
 
 Horizontes disponíveis: `72`, `168`, `336` horas.
 
+Monitoramento local:
+
+- Métricas Prometheus: `http://localhost:8888/metrics`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` (`admin` / `admin`)
+- Guia detalhado: [docs/MODEL_MONITORING.md](docs/MODEL_MONITORING.md)
+
 ---
 
 ## Qualidade e Governança
@@ -320,6 +322,7 @@ Horizontes disponíveis: `72`, `168`, `336` horas.
 - Cobertura de testes mínima: **60%** (verificada no CI/CD)
 - Configs de experimento versionadas em `src/ml_workstation/experiments/`
 - Metadados de governança registrados no MLflow (owner, git_sha, data_version, risk_level)
+- Monitoramento online de qualidade por MAE/RMSE/MAPE em `weatherops_model_*`
 - Pipeline de CI no GitHub Actions: `push` e `PR` no branch `develop` executam os testes com cobertura
 - Dados versionados com DVC (`data.dvc`)
 
