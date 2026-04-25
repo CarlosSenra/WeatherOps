@@ -21,6 +21,7 @@ do Parquet são descartados quando o processo termina.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
@@ -32,8 +33,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.config import ALL_SERVING_COLUMNS, get_settings
 from src.api.metrics import setup_metrics
 from src.api.routers import forecast, health
+from src.api.services.accuracy_evaluator import AccuracyEvaluator
 from src.api.services.data_service import DataService
 from src.api.services.model_registry import ModelRegistry
+from src.api.services.prediction_logger import PredictionLogger
 from src.api.services.predictor import Predictor
 
 logging.basicConfig(
@@ -73,15 +76,29 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         local_model_root=settings.weatherops_model_root,
     )
 
-    # ── 4. Configurar app.state ────────────────────────────────────────────
+    # ── 4. PredictionLogger + AccuracyEvaluator ────────────────────────────
+    logger.info("Inicializando PredictionLogger em %s …", settings.accuracy_db_path)
+    prediction_logger = PredictionLogger(settings.accuracy_db_path)
+    await prediction_logger.init()
+
+    evaluator = AccuracyEvaluator(
+        logger_svc=prediction_logger,
+        data_service=data_service,
+        interval_seconds=settings.accuracy_eval_interval_seconds,
+    )
+    evaluator_task = asyncio.create_task(evaluator.start())
+
+    # ── 5. Configurar app.state ────────────────────────────────────────────
     app.state.data_service = data_service
     app.state.registry = registry
     app.state.predictor = Predictor(registry, data_service)
+    app.state.prediction_logger = prediction_logger
 
     logger.info("Inicialização da API WeatherOps concluída.")
 
     yield
 
+    evaluator_task.cancel()
     logger.info("Encerrando a API WeatherOps.")
 
 

@@ -108,6 +108,41 @@ class DataService:
 
         return available.iloc[-sequence_length:].copy()
 
+    def get_actual_values(
+        self,
+        reference_date: datetime,
+        start_offset_h: int,
+        end_offset_h: int,
+        target_column: str = "temp_ar_c",
+    ) -> pd.Series | None:
+        """Retorna os valores reais observados em uma janela após ``reference_date``.
+
+        Usado pelo ``AccuracyEvaluator`` para confrontar predições com o ground truth
+        que chegou ao Parquet após o horizonte ter decorrido.
+
+        Argumentos:
+            reference_date:  Instante de referência da predição (exclusive).
+            start_offset_h:  Início da janela em horas após ``reference_date`` (inclusive).
+            end_offset_h:    Fim da janela em horas após ``reference_date`` (inclusive).
+            target_column:   Coluna alvo a retornar (padrão: ``temp_ar_c``).
+
+        Retorna:
+            ``pd.Series`` com os valores observados, ou ``None`` se não houver dados
+            no intervalo ou a coluna não existir.
+        """
+        self._assert_ready()
+        if target_column not in self._df.columns:  # type: ignore[union-attr]
+            logger.warning(
+                "DataService.get_actual_values: coluna '%s' não encontrada no DataFrame.",
+                target_column,
+            )
+            return None
+        start = pd.Timestamp(reference_date) + pd.Timedelta(hours=start_offset_h)
+        end = pd.Timestamp(reference_date) + pd.Timedelta(hours=end_offset_h)
+        mask = (self._df.index >= start) & (self._df.index <= end)  # type: ignore[union-attr]
+        series = self._df.loc[mask, target_column]  # type: ignore[index]
+        return series if len(series) > 0 else None
+
     def get_training_slice(self, train_ratio: float) -> pd.DataFrame:
         """Retorna o split temporal de treinamento do DataFrame completo.
 

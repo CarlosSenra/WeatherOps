@@ -16,6 +16,7 @@ Adicione o literal de string em ``ModelType`` em ``schemas/forecast.py``.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -93,4 +94,11 @@ async def forecast(
     model_key = f"{request_body.model_type}_{horizon}"
     inference_duration.labels(model_key=model_key).observe(response.latency_ms / 1000)
     cache.set(cache_key, response.model_dump(mode="json"))
+
+    prediction_logger = getattr(http_request.app.state, "prediction_logger", None)
+    if prediction_logger is not None:
+        asyncio.create_task(
+            prediction_logger.log(response, group_id=request_body.group_id)
+        )
+
     return response

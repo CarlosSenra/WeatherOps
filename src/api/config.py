@@ -200,6 +200,10 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 3600
     redis_url: str = "redis://localhost:6379"
 
+    # Monitoramento de qualidade dos modelos
+    accuracy_db_path: str = "/app/data/accuracy.db"
+    accuracy_eval_interval_seconds: int = 3600
+
     # Metadados da API
     api_title: str = "WeatherOps ML Serving API"
     api_version: str = "1.0.0"

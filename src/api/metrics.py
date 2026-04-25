@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import FastAPI
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter, Gauge, Histogram
 from prometheus_fastapi_instrumentator import Instrumentator
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,31 @@ cache_hits = Counter(
 cache_misses = Counter(
     "weatherops_cache_misses_total",
     "Número de requisições de previsão que exigiram inferência (cache miss)",
+)
+
+# ---------------------------------------------------------------------------
+# Métricas de qualidade do modelo — atualizadas pelo AccuracyEvaluator
+# ---------------------------------------------------------------------------
+# Labels:
+#   model_key — ex.: "tft_72", "tft_168", "tft_336"
+#   bucket    — "near" (h1-24) | "mid" (h25-72) | "far" (h73+)
+
+model_mae = Gauge(
+    "weatherops_model_mae",
+    "Erro Absoluto Médio (MAE) por modelo e bucket de horizonte",
+    labelnames=["model_key", "bucket"],
+)
+
+model_rmse = Gauge(
+    "weatherops_model_rmse",
+    "Raiz do Erro Quadrático Médio (RMSE) por modelo e bucket de horizonte",
+    labelnames=["model_key", "bucket"],
+)
+
+model_mape = Gauge(
+    "weatherops_model_mape",
+    "Erro Percentual Absoluto Médio (MAPE) por modelo e bucket de horizonte",
+    labelnames=["model_key", "bucket"],
 )
 
 
