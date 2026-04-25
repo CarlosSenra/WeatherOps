@@ -163,3 +163,84 @@ def test_read_and_prepare_raises_for_empty_directory(tmp_path: Path) -> None:
     svc = DataService()
     with pytest.raises(FileNotFoundError):
         svc._read_and_prepare(str(tmp_path), ["temp"])
+
+
+# ---------------------------------------------------------------------------
+# get_actual_values
+# ---------------------------------------------------------------------------
+
+
+def _service_with_temp_data(n: int = 200) -> DataService:
+    """DataService com coluna temp_ar_c indexada por hora."""
+    import numpy as np
+
+    idx = pd.date_range("2024-01-01", periods=n, freq="h")
+    svc = DataService()
+    df = pd.DataFrame({"temp_ar_c": 20.0 + np.arange(n, dtype=float)}, index=idx)
+    df["group"] = "station_1"
+    df["time_idx"] = range(n)
+    svc._df = df
+    return svc
+
+
+def test_get_actual_values_raises_when_not_loaded() -> None:
+    svc = DataService()
+    with pytest.raises(RuntimeError, match="load"):
+        svc.get_actual_values(datetime(2024, 1, 2), start_offset_h=1, end_offset_h=24)
+
+
+def test_get_actual_values_returns_series_for_valid_window() -> None:
+    svc = _service_with_temp_data(200)
+    result = svc.get_actual_values(
+        reference_date=datetime(2024, 1, 2, 0, 0, 0),
+        start_offset_h=1,
+        end_offset_h=24,
+    )
+    assert result is not None
+    assert len(result) == 24
+
+
+def test_get_actual_values_returns_none_when_window_beyond_data() -> None:
+    svc = _service_with_temp_data(10)
+    # Todos os dados terminam cedo; janela está no futuro distante
+    result = svc.get_actual_values(
+        reference_date=datetime(2030, 1, 1, 0, 0, 0),
+        start_offset_h=1,
+        end_offset_h=24,
+    )
+    assert result is None
+
+
+def test_get_actual_values_returns_none_for_missing_column() -> None:
+    svc = _service_with_temp_data(100)
+    result = svc.get_actual_values(
+        reference_date=datetime(2024, 1, 2, 0, 0, 0),
+        start_offset_h=1,
+        end_offset_h=24,
+        target_column="coluna_inexistente",
+    )
+    assert result is None
+
+
+def test_get_actual_values_respects_offset_boundaries() -> None:
+    svc = _service_with_temp_data(200)
+    # start=1h, end=6h → deve retornar 6 pontos (horas 1 a 6 após reference_date)
+    result = svc.get_actual_values(
+        reference_date=datetime(2024, 1, 5, 0, 0, 0),
+        start_offset_h=1,
+        end_offset_h=6,
+    )
+    assert result is not None
+    assert len(result) == 6
+
+
+def test_get_actual_values_excludes_reference_date_itself() -> None:
+    """O ponto em reference_date não deve entrar na janela (start_offset_h >= 1)."""
+    svc = _service_with_temp_data(200)
+    result = svc.get_actual_values(
+        reference_date=datetime(2024, 1, 5, 0, 0, 0),
+        start_offset_h=1,
+        end_offset_h=1,
+    )
+    assert result is not None
+    assert len(result) == 1
