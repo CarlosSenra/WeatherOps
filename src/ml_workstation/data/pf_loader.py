@@ -210,9 +210,15 @@ class PytorchForecastingDataLoader:
         target = self.config.target_columns[0]
 
         # N-BEATS is univariate: only the target series as input, fixed encoder length,
-        # no relative time index.  TFT supports covariates and variable encoder length.
+        # no relative time index. For TFT serving, we keep min_encoder_length bounded
+        # so `min_encoder_length + horizon <= sequence_length`, allowing inference with
+        # the context window returned by DataService.
         is_nbeats = self.model_type == "nbeats"
-        min_enc = self.config.sequence_length if is_nbeats else self.config.sequence_length // 2
+        min_enc = (
+            self.config.sequence_length
+            if is_nbeats
+            else max(1, self.config.sequence_length - self.config.horizon)
+        )
         known_reals_used = [] if is_nbeats else known_reals
         unknown_reals_used = [target] if is_nbeats else unknown_reals
 

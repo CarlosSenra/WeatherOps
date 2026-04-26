@@ -11,6 +11,7 @@ garantindo compatibilidade com o restante do pipeline (avaliação, promoção).
 import logging
 import math
 from pathlib import Path
+from typing import Mapping
 
 import lightning as pl
 import torch
@@ -22,6 +23,30 @@ from src.ml_workstation.config.training_config import TrainingConfig
 from src.ml_workstation.training.trainer import TrainerOutput
 
 logger = logging.getLogger(__name__)
+
+
+def _canonicalize_tft_mape(metrics: Mapping[str, float]) -> dict[str, float]:
+    """Normaliza a métrica MAPE do TFT para a chave canônica `mape`.
+
+    O ecossistema Lightning/Pytorch Forecasting pode emitir MAPE com chaves
+    diferentes (ex.: `val_MAPE`, `val_mape` ou `MAPE`). A promoção usa
+    explicitamente `mape`, então consolidamos aqui sem remover métricas
+    auxiliares do callback.
+    """
+    canonicalized = dict(metrics)
+
+    # Preserva um `mape` já calculado explicitamente pelo pipeline.
+    if "mape" in canonicalized:
+        return canonicalized
+
+    candidate_keys = ("val_MAPE", "val_mape", "MAPE", "mape_scaled")
+    for key in candidate_keys:
+        value = canonicalized.get(key)
+        if value is not None and not math.isnan(value):
+            canonicalized["mape"] = float(value)
+            break
+
+    return canonicalized
 
 
 class _MLflowEpochCallback(Callback):
@@ -56,6 +81,7 @@ class _MLflowEpochCallback(Callback):
         if not metrics:
             return
 
+        metrics = _canonicalize_tft_mape(metrics)
         self._last_metrics = metrics
         self.tracker.log_epoch_metrics(metrics, epoch=epoch)
 
