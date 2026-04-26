@@ -17,6 +17,19 @@ class PromotionRejectedError(Exception):
     """Levantada quando o candidato tem métrica pior que o modelo atual em produção."""
 
 
+def _resolve_candidate_mape(metrics: dict[str, float]) -> float | None:
+    """Extrai o MAPE canônico para promoção a partir das métricas do run.
+
+    Prioriza `mape` (chave canônica). Para compatibilidade com runs TFT
+    antigos, aceita aliases emitidos no callback Lightning.
+    """
+    for key in ("mape", "val_MAPE", "val_mape", "MAPE", "mape_scaled"):
+        value = metrics.get(key)
+        if value is not None:
+            return float(value)
+    return None
+
+
 def _get_experiment_id(client: mlflow.MlflowClient, experiment_name: str) -> str:
     experiment = client.get_experiment_by_name(experiment_name)
     if experiment is None:
@@ -79,6 +92,7 @@ def promote_run(
     tracking_uri: str | None = None,
     force: bool = False,
     export_dir: str | Path | None = None,
+    strict_export: bool = True,
 ) -> str:
     """Registra o run no MLflow Model Registry com alias 'production'.
 
@@ -101,7 +115,7 @@ def promote_run(
 
     client = mlflow.MlflowClient()
     run = client.get_run(run_id)
-    candidate_mape = run.data.metrics.get("mape")
+    candidate_mape = _resolve_candidate_mape(run.data.metrics)
 
     effective_model_name = model_name or experiment_name
 
@@ -159,6 +173,11 @@ def promote_run(
                 promoted_at=tags["promoted_at"],
             )
         except Exception as exc:
+            if strict_export:
+                raise RuntimeError(
+                    "Exportação local falhou após promoção no Registry. "
+                    "A promoção foi registrada, mas os artefatos locais não ficaram válidos."
+                ) from exc
             logger.warning(
                 "Exportação para disco falhou (promoção no Registry mantém-se): %s",
                 exc,
@@ -175,6 +194,7 @@ def promote_best(
     tracking_uri: str | None = None,
     force: bool = False,
     export_dir: str | Path | None = None,
+    strict_export: bool = True,
 ) -> str:
     """Seleciona o melhor run e o promove para produção.
 
@@ -193,4 +213,5 @@ def promote_best(
         tracking_uri=tracking_uri,
         force=force,
         export_dir=export_dir,
+        strict_export=strict_export,
     )

@@ -6,7 +6,9 @@ import argparse
 import logging
 import os
 import sys
+from pathlib import Path
 
+from src.ml_workstation.evaluation.mlflow_helpers import workspace_root
 from src.ml_workstation.promotion.promote import PromotionRejectedError, promote_best, promote_run
 
 logging.basicConfig(
@@ -78,14 +80,35 @@ def _build_parser() -> argparse.ArgumentParser:
             "(ex.: src/api/ml_models relativo ao repositório)."
         ),
     )
+    parser.add_argument(
+        "--strict-export",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Falha o comando quando a exportação local não gerar artefatos válidos. "
+            "Use --no-strict-export para manter comportamento permissivo."
+        ),
+    )
     return parser
+
+
+def _resolve_export_dir(export_dir: str | None) -> str | None:
+    if not export_dir:
+        return None
+    export_path = Path(export_dir)
+    if export_path.is_absolute():
+        return str(export_path.resolve())
+    return str((workspace_root() / export_path).resolve())
 
 
 def main() -> None:
     args = _build_parser().parse_args()
-    export_dir = getattr(args, "export_dir", None) or os.environ.get(
+    export_dir_arg = getattr(args, "export_dir", None) or os.environ.get(
         "WEATHEROPS_EXPORT_MODELS_DIR"
     )
+    export_dir = _resolve_export_dir(export_dir_arg)
+    if export_dir:
+        logger.info("Diretório efetivo de exportação: %s", export_dir)
 
     try:
         if args.run_id:
@@ -96,6 +119,7 @@ def main() -> None:
                 tracking_uri=args.tracking_uri,
                 force=args.force,
                 export_dir=export_dir,
+                strict_export=args.strict_export,
             )
             print(
                 f"Modelo promovido com sucesso.\n"
@@ -111,6 +135,7 @@ def main() -> None:
                 tracking_uri=args.tracking_uri,
                 force=args.force,
                 export_dir=export_dir,
+                strict_export=args.strict_export,
             )
             print(
                 f"Melhor run promovido com sucesso.\n"
