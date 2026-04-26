@@ -143,6 +143,19 @@ def test_read_and_prepare_warns_on_missing_columns(tmp_path: Path, caplog: pytes
     assert "temp" in result.columns
 
 
+def test_read_and_prepare_removes_infinite_values(tmp_path: Path) -> None:
+    df = pd.DataFrame(
+        {"temp": [1.0, float("inf"), 2.0, float("-inf")]},
+        index=pd.date_range("2024-01-01", periods=4, freq="h"),
+    )
+    parquet_path = tmp_path / "data.parquet"
+    df.to_parquet(parquet_path)
+
+    svc = DataService()
+    result = svc._read_and_prepare(str(parquet_path), ["temp"])
+    assert len(result) == 2
+
+
 def test_read_and_prepare_from_directory(tmp_path: Path) -> None:
     import numpy as np
 
@@ -157,6 +170,62 @@ def test_read_and_prepare_from_directory(tmp_path: Path) -> None:
     svc = DataService()
     result = svc._read_and_prepare(str(tmp_path), ["temp"])
     assert len(result) == 20
+
+
+def test_read_and_prepare_from_nested_directories(tmp_path: Path) -> None:
+    import numpy as np
+
+    nested = tmp_path / "salvador"
+    nested.mkdir(parents=True)
+    df = pd.DataFrame(
+        {"temp": np.random.rand(8)},
+        index=pd.date_range("2024-02-01", periods=8, freq="h"),
+    )
+    df.to_parquet(nested / "dados.parquet")
+
+    svc = DataService()
+    result = svc._read_and_prepare(str(tmp_path), ["temp"])
+    assert len(result) == 8
+
+
+def test_read_and_prepare_falls_back_to_model_root_serving_data(tmp_path: Path) -> None:
+    import numpy as np
+
+    parquet_root = tmp_path / "parquet_root"
+    parquet_root.mkdir(parents=True)
+    model_root = tmp_path / "ml_models" / "weather_forecasting_h72" / "serving_data"
+    model_root.mkdir(parents=True)
+    df = pd.DataFrame(
+        {"temp": np.random.rand(6)},
+        index=pd.date_range("2024-03-01", periods=6, freq="h"),
+    )
+    df.to_parquet(model_root / "dados.parquet")
+
+    svc = DataService()
+    result = svc._read_and_prepare(str(parquet_root), ["temp"], str(tmp_path / "ml_models"))
+    assert len(result) == 6
+
+
+def test_read_and_prepare_prioritizes_model_root_over_recursive_spec(tmp_path: Path) -> None:
+    import numpy as np
+
+    spec_dir = tmp_path / "spec" / "city_a"
+    spec_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {"temp": np.random.rand(4)},
+        index=pd.date_range("2024-01-01", periods=4, freq="h"),
+    ).to_parquet(spec_dir / "dados.parquet")
+
+    serving_dir = tmp_path / "ml_models" / "weather_forecasting_h72" / "serving_data"
+    serving_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {"temp": np.random.rand(7)},
+        index=pd.date_range("2024-02-01", periods=7, freq="h"),
+    ).to_parquet(serving_dir / "dados.parquet")
+
+    svc = DataService()
+    result = svc._read_and_prepare(str(tmp_path / "spec"), ["temp"], str(tmp_path / "ml_models"))
+    assert len(result) == 7
 
 
 def test_read_and_prepare_raises_for_empty_directory(tmp_path: Path) -> None:

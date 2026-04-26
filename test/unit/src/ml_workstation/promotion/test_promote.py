@@ -1,25 +1,30 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 import torch
 
+import src.ml_workstation.promotion.export_local as export_local_module
 import src.ml_workstation.promotion.promote as promote_module
 import src.ml_workstation.promotion.loader as loader_module
+import src.ml_workstation.promotion.run_promote as run_promote_module
 from src.ml_workstation.promotion.promote import (
     PromotionRejectedError,
     promote_run,
     select_best_run,
 )
+from src.ml_workstation.promotion.export_local import export_promoted_model_to_disk
 from src.ml_workstation.promotion.loader import (
     ModelNotInProductionError,
     get_production_info,
     load_production_model,
     load_production_scaler,
 )
-from src.ml_workstation.promotion.run_promote import _build_parser, main
+from src.ml_workstation.promotion.run_promote import _build_parser, _resolve_export_dir, main
 
 
 # ---------------------------------------------------------------------------
@@ -279,6 +284,34 @@ class TestPromoteRun:
 
         assert version == "5"
 
+    def test_uses_val_mape_alias_when_canonical_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        run = _make_run("run-val-mape", mape=None)
+        run.data.metrics["val_MAPE"] = 7.25
+        client = self._make_client(run, current_mv=None)
+
+        monkeypatch.setattr(promote_module, "resolve_tracking_uri", lambda uri: None)
+
+        with (
+            patch("src.ml_workstation.promotion.promote.mlflow.MlflowClient", return_value=client),
+            patch(
+                "src.ml_workstation.promotion.promote.mlflow.register_model",
+                return_value=SimpleNamespace(version="3"),
+            ),
+        ):
+            version = promote_run(
+                run_id="run-val-mape",
+                experiment_name="weather_forecasting_h72",
+            )
+
+        assert version == "3"
+        mape_tag_calls = [
+            c for c in client.set_model_version_tag.call_args_list if c.args[2] == "mape"
+        ]
+        assert mape_tag_calls
+        assert mape_tag_calls[-1].args[3] == "7.25"
+
     def test_horizons_are_independent(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -301,6 +334,61 @@ class TestPromoteRun:
         assert all(c.kwargs["name"] == "weather_forecasting_h72" for c in alias_calls)
         tag_calls = client.set_model_version_tag.call_args_list
         assert all(c.args[0] == "weather_forecasting_h72" for c in tag_calls)
+
+    def test_raises_when_strict_export_enabled_and_export_fails(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        run = _make_run("run-export-fail", mape=4.0)
+        client = self._make_client(run, current_mv=None)
+        monkeypatch.setattr(promote_module, "resolve_tracking_uri", lambda uri: None)
+        monkeypatch.setattr(
+            promote_module,
+            "export_promoted_model_to_disk",
+            lambda **kw: (_ for _ in ()).throw(RuntimeError("broken export")),
+        )
+
+        with (
+            patch("src.ml_workstation.promotion.promote.mlflow.MlflowClient", return_value=client),
+            patch(
+                "src.ml_workstation.promotion.promote.mlflow.register_model",
+                return_value=SimpleNamespace(version="9"),
+            ),
+            pytest.raises(RuntimeError, match="Exportação local falhou"),
+        ):
+            promote_run(
+                run_id="run-export-fail",
+                experiment_name="weather_forecasting_h72",
+                export_dir="src/api/ml_models",
+                strict_export=True,
+            )
+
+    def test_keeps_previous_behavior_when_strict_export_disabled(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        run = _make_run("run-export-warn", mape=4.0)
+        client = self._make_client(run, current_mv=None)
+        monkeypatch.setattr(promote_module, "resolve_tracking_uri", lambda uri: None)
+        monkeypatch.setattr(
+            promote_module,
+            "export_promoted_model_to_disk",
+            lambda **kw: (_ for _ in ()).throw(RuntimeError("broken export")),
+        )
+
+        with (
+            patch("src.ml_workstation.promotion.promote.mlflow.MlflowClient", return_value=client),
+            patch(
+                "src.ml_workstation.promotion.promote.mlflow.register_model",
+                return_value=SimpleNamespace(version="10"),
+            ),
+        ):
+            version = promote_run(
+                run_id="run-export-warn",
+                experiment_name="weather_forecasting_h72",
+                export_dir="src/api/ml_models",
+                strict_export=False,
+            )
+
+        assert version == "10"
 
 
 # ---------------------------------------------------------------------------
@@ -510,10 +598,12 @@ class TestRunPromoteCLI:
             "--model-name", "my_model",
             "--tracking-uri", "http://mlflow:5000",
             "--force",
+            "--strict-export",
         ])
         assert args.experiment_name == "weather_forecasting_h72"
         assert args.run_id == "abc123"
         assert args.force is True
+        assert args.strict_export is True
 
     def test_main_promotes_best_when_no_run_id(
         self, monkeypatch: pytest.MonkeyPatch, capsys
@@ -525,6 +615,7 @@ class TestRunPromoteCLI:
             "_build_parser",
             lambda: _fixed_parser(run_id=None),
         )
+        monkeypatch.setattr(cli_module, "_resolve_export_dir", lambda path: path)
         monkeypatch.setattr(cli_module, "promote_best", lambda **kw: "2")
         monkeypatch.setattr(
             cli_module,
@@ -546,6 +637,7 @@ class TestRunPromoteCLI:
             "_build_parser",
             lambda: _fixed_parser(run_id="abc123"),
         )
+        monkeypatch.setattr(cli_module, "_resolve_export_dir", lambda path: path)
         monkeypatch.setattr(cli_module, "promote_run", lambda **kw: "5")
 
         main()
@@ -560,6 +652,7 @@ class TestRunPromoteCLI:
             "_build_parser",
             lambda: _fixed_parser(run_id=None),
         )
+        monkeypatch.setattr(cli_module, "_resolve_export_dir", lambda path: path)
         monkeypatch.setattr(
             cli_module,
             "promote_best",
@@ -584,6 +677,8 @@ class _FixedArgs:
         self.model_name = None
         self.tracking_uri = None
         self.force = False
+        self.export_dir = None
+        self.strict_export = True
 
 
 class _FixedParser:
@@ -596,3 +691,82 @@ class _FixedParser:
 
 def _fixed_parser(run_id):
     return _FixedParser(run_id)
+
+
+class TestResolveExportDir:
+    def test_returns_none_for_empty(self) -> None:
+        assert _resolve_export_dir(None) is None
+
+    def test_resolves_relative_path_from_workspace_root(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            run_promote_module,
+            "workspace_root",
+            lambda: Path("C:/repo"),
+        )
+        resolved = _resolve_export_dir("src/api/ml_models")
+        assert resolved == os.path.normpath("C:/repo/src/api/ml_models")
+
+
+class TestExportPromotedModelToDisk:
+    def test_fails_when_required_artifacts_are_missing(
+        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        downloaded = tmp_path / "downloaded_model"
+        downloaded.mkdir(parents=True)
+        (downloaded / "MLmodel").write_text("flavors: {}", encoding="utf-8")
+        monkeypatch.setattr(export_local_module, "resolve_tracking_uri", lambda uri: None)
+        monkeypatch.setattr(export_local_module, "workspace_root", lambda: tmp_path)
+        monkeypatch.setattr(
+            export_local_module.mlflow.artifacts,
+            "download_artifacts",
+            lambda **kwargs: str(downloaded),
+        )
+
+        with pytest.raises(RuntimeError, match="faltando data/"):
+            export_promoted_model_to_disk(
+                run_id="run-1",
+                effective_model_name="weather_forecasting_h72",
+                registry_version="1",
+                experiment_name="weather_forecasting_h72",
+                tracking_uri=None,
+                export_dir=tmp_path / "out",
+                candidate_mape=1.0,
+            )
+
+    def test_exports_complete_layout_and_writes_manifest(
+        self, tmp_path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        downloaded = tmp_path / "downloaded_complete"
+        (downloaded / "data").mkdir(parents=True)
+        (downloaded / "MLmodel").write_text("flavors: {}", encoding="utf-8")
+        (downloaded / "data" / "weights.bin").write_text("ok", encoding="utf-8")
+        serving_spec = tmp_path / "data" / "spec" / "salvador"
+        serving_spec.mkdir(parents=True)
+        (serving_spec / "dados.parquet").write_text("fake parquet", encoding="utf-8")
+        monkeypatch.setattr(export_local_module, "resolve_tracking_uri", lambda uri: None)
+        monkeypatch.setattr(export_local_module, "workspace_root", lambda: tmp_path)
+        monkeypatch.setattr(
+            export_local_module.mlflow.artifacts,
+            "download_artifacts",
+            lambda **kwargs: str(downloaded),
+        )
+
+        result = export_promoted_model_to_disk(
+            run_id="run-2",
+            effective_model_name="weather_forecasting_h72",
+            registry_version="2",
+            experiment_name="weather_forecasting_h72",
+            tracking_uri=None,
+            export_dir=tmp_path / "out",
+            candidate_mape=2.0,
+        )
+
+        assert result == (tmp_path / "out" / "weather_forecasting_h72")
+        assert (result / "MLmodel").is_file()
+        assert (result / "data").is_dir()
+        assert (result / "manifest.json").is_file()
+        assert (result / "serving_data").is_dir()
+        assert (result / "serving_data" / "dados.parquet").is_file()
+        assert (result / "serving_data" / "serving_data_metadata.json").is_file()
