@@ -63,7 +63,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # ── 2. DataService ─────────────────────────────────────────────────────
     logger.info("Carregando dataset Parquet de %s …", settings.parquet_path)
     data_service = DataService()
-    await data_service.load(settings.parquet_path, ALL_SERVING_COLUMNS)
+    await data_service.load(
+        settings.parquet_path,
+        ALL_SERVING_COLUMNS,
+        model_root=settings.weatherops_model_root,
+    )
 
     # ── 3. ModelRegistry ───────────────────────────────────────────────────
     logger.info("Carregando modelos em produção do MLflow Registry …")

@@ -21,7 +21,9 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Iterable
 
+import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -47,7 +49,7 @@ class DataService:
     # Inicialização
     # ------------------------------------------------------------------
 
-    async def load(self, parquet_path: str, columns: list[str]) -> None:
+    async def load(self, parquet_path: str, columns: list[str], model_root: str | None = None) -> None:
         """Carrega e prepara o dataset a partir do disco.
 
         Delega o I/O bloqueante a uma thread pool para não bloquear a
@@ -61,7 +63,7 @@ class DataService:
                           arquivo são ignoradas com aviso em vez de levantar
                           exceção.
         """
-        self._df = await asyncio.to_thread(self._read_and_prepare, parquet_path, columns)
+        self._df = await asyncio.to_thread(self._read_and_prepare, parquet_path, columns, model_root)
         logger.info(
             "DataService pronto: %d linhas, intervalo de datas %s → %s",
             len(self._df),
@@ -189,16 +191,51 @@ class DataService:
                 "Certifique-se de que DataService.load() seja aguardado durante o startup da aplicação."
             )
 
-    def _read_and_prepare(self, parquet_path: str, columns: list[str]) -> pd.DataFrame:
+    def _candidate_from_model_root(self, model_root: str | None) -> list[Path]:
+        if not model_root:
+            return []
+        root = Path(model_root)
+        if not root.exists():
+            return []
+        candidates = sorted(p for p in root.rglob("*.parquet") if "serving_data" in p.parts)
+        # Evita concatenar múltiplos horizontes e introduzir índice temporal duplicado.
+        return candidates[:1]
+
+    def _read_parquet_files(self, files: Iterable[Path]) -> pd.DataFrame:
+        return pd.concat([pd.read_parquet(f) for f in files])
+
+    def _read_and_prepare(
+        self,
+        parquet_path: str,
+        columns: list[str],
+        model_root: str | None = None,
+    ) -> pd.DataFrame:
         """Bloqueante: lê o Parquet, seleciona colunas e adiciona time_idx e grupo."""
         path = Path(parquet_path)
-
-        if path.is_dir():
+        model_root_files = self._candidate_from_model_root(model_root)
+        if model_root_files:
+            df = self._read_parquet_files(model_root_files)
+            logger.info(
+                "DataService: usando parquet de serving_data no model_root (%s)",
+                model_root_files[0],
+            )
+        elif path.is_dir():
             files = sorted(path.glob("*.parquet"))
             if not files:
-                raise FileNotFoundError(f"Nenhum arquivo .parquet encontrado em: {path}")
-            df = pd.concat([pd.read_parquet(f) for f in files])
-            logger.info("DataService: lidos %d arquivos parquet de %s", len(files), path)
+                files = sorted(path.rglob("*.parquet"))
+                if len(files) > 1:
+                    logger.warning(
+                        "DataService: %d parquets recursivos detectados em %s; usando somente %s para evitar índice duplicado.",
+                        len(files),
+                        path,
+                        files[0],
+                    )
+                    files = files[:1]
+            if not files:
+                extra = f" e fallback em model_root={model_root}" if model_root else ""
+                raise FileNotFoundError(f"Nenhum arquivo .parquet encontrado em: {path}{extra}")
+            df = self._read_parquet_files(files)
+            logger.info("DataService: lidos %d arquivos parquet (base=%s)", len(files), path)
         else:
             df = pd.read_parquet(path)
             logger.info("DataService: lido arquivo parquet %s", path)
@@ -211,7 +248,7 @@ class DataService:
         if missing:
             logger.warning("DataService: colunas não encontradas no parquet (ignoradas): %s", missing)
 
-        df = df[available_cols].dropna()
+        df = df[available_cols].replace([np.inf, -np.inf], pd.NA).dropna()
 
         # Pré-computa time_idx e grupo para que fatias de inferência estejam sempre prontas.
         df = df.copy()
