@@ -199,6 +199,23 @@ poetry run pytest
 poetry run pytest --cov=core --cov=src --cov-report=term-missing
 ```
 
+Execucao guiada com user pipeline (Windows + Linux/macOS):
+
+```bash
+# PowerShell (Windows)
+./scripts/run_pipeline.ps1 -Mode bootstrap -Device auto -StartYear 2024 -EndYear 2026
+
+# Bash (Linux/macOS)
+./scripts/run_pipeline.sh --mode bootstrap --device auto --start-year 2024 --end-year 2026
+```
+
+Modos:
+- `bootstrap`: exige modelos exportados já versionados em `src/api/ml_models`.
+- `train`: roda treino + promote/export antes de subir API.
+- `full`: tenta bootstrap e pode seguir com treino quando necessário.
+
+Observação: o pipeline de dados local é obrigatório (`inmet_download_raw` -> `data_cleaning` -> `data_feature_engineering`) para gerar `data/spec`.
+
 ---
 
 ## Airflow
@@ -281,12 +298,19 @@ O MLflow Model Registry é a fonte de verdade para modelos em produção. Cada m
 
 ```bash
 # Promover o melhor run por MAPE e exportar para a API
+# (o caminho relativo é resolvido pela raiz do repositório)
 poetry run python -m src.ml_workstation.promotion.run_promote \
   --experiment-name weather_forecasting_h72 \
   --export-dir src/api/ml_models
 ```
 
 Use `--force` para sobrescrever a proteção contra regressão de MAPE.
+Use `--no-strict-export` apenas se quiser manter a promoção no Registry mesmo com falha na exportação local.
+
+Estrutura esperada em `src/api/ml_models/<model_name>/`:
+- `MLmodel`
+- `data/`
+- `manifest.json`
 
 Detalhes: [src/ml_workstation/promotion/PROMOTION.md](src/ml_workstation/promotion/PROMOTION.md)
 
