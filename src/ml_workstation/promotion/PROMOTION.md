@@ -70,17 +70,18 @@ Depois de uma promoção **bem-sucedida** no Registry, podes opcionalmente copia
 
 | Forma | Descrição |
 |---|---|
-| `--export-dir DIR` | Passa o diretório **base** na linha de comando. Cada modelo promovido passa a existir em `DIR/<nome_no_registry>/` (o nome no Registry é o `experiment_name` ou o `--model-name` se o usares). |
+| `--export-dir DIR` | Passa o diretório **base** na linha de comando. Se for relativo, é resolvido pela raiz do repositório. Cada modelo promovido passa a existir em `DIR/<nome_no_registry>/` (o nome no Registry é o `experiment_name` ou o `--model-name` se o usares). |
 | `WEATHEROPS_EXPORT_MODELS_DIR` | Variável de ambiente com o mesmo efeito que `--export-dir`. Se ambos estiverem definidos, **a CLI ganha** (`--export-dir` tem prioridade). |
+| `--strict-export / --no-strict-export` | Em modo estrito (default), falha o comando se o export local não gerar artefatos válidos (`MLmodel` + `data/`). |
 
-O diretório base deve existir ou ser criável; as subpastas por modelo são substituídas em cada exportação (remove-se a pasta antiga com o mesmo nome).
+O diretório base deve existir ou ser criável; as subpastas por modelo são substituídas em cada exportação após validação da estrutura exportada.
 
 **Conteúdo gerado**
 
 - Pasta do modelo no formato MLflow PyTorch (`MLmodel`, `data`, etc.).
 - `manifest.json` na raiz dessa pasta: `registry_version`, `run_id`, `mape`, `promoted_at`, `experiment_name`, etc.
 
-Se a exportação falhar (I/O, permissões), a promoção no **Model Registry mantém-se**; o erro é registado como aviso nos logs.
+Em modo estrito (default), se a exportação falhar (I/O, permissões ou layout incompleto), o comando retorna erro para evitar estado local inconsistente. Usa `--no-strict-export` para manter o comportamento permissivo.
 
 **Exemplos (a partir da raiz do repositório `WeatherOps/`)**
 
@@ -228,6 +229,8 @@ usage: python -m src.ml_workstation.promotion.run_promote
        [--model-name MODEL_NAME]
        [--tracking-uri TRACKING_URI]
        [--force]
+       [--export-dir DIR]
+       [--strict-export | --no-strict-export]
 ```
 
 ### Exemplos
@@ -236,20 +239,20 @@ usage: python -m src.ml_workstation.promotion.run_promote
 # Seleciona e promove automaticamente o melhor MAPE (deve ser melhorado para o TFT e Nbeast)
 poetry run python -m src.ml_workstation.promotion.run_promote \
     --experiment-name weather_forecasting_h72 \
-    --export-dir ../../src/api/ml_models
+    --export-dir src/api/ml_models
 
 # Promove um run específico
 poetry run python -m src.ml_workstation.promotion.run_promote \
     --experiment-name weather_forecasting_h72 \
     --run-id abc123def456 \
-    --export-dir ../../src/api/ml_models
+    --export-dir src/api/ml_models
 
 # Força promoção ignorando proteção de regressão
 poetry run python -m src.ml_workstation.promotion.run_promote \
     --experiment-name weather_forecasting_h72 \
     --run-id abc123def456 \
     --force \
-    --export-dir ../../src/api/ml_models
+    --export-dir src/api/ml_models
 ```
 
 ### Códigos de saída
