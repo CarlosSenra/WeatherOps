@@ -31,6 +31,20 @@ Acesso:
 - Airflow Webserver: `http://localhost:8080`
 - Usuario/senha default (local): `airflow` / `airflow`
 
+## Runner automatizado (user pipeline)
+
+Após clonar o repositório, é possível rodar o fluxo completo via scripts:
+
+```bash
+# Windows (PowerShell)
+./scripts/run_pipeline.ps1 -Mode bootstrap -Device auto -StartYear 2024 -EndYear 2026
+
+# Linux/macOS (Bash)
+./scripts/run_pipeline.sh --mode bootstrap --device auto --start-year 2024 --end-year 2026
+```
+
+Esses scripts sobem Airflow, executam as DAGs de dados e validam modelos exportados da API.
+
 ## DAG de scraping INMET (dados brutos por ano)
 
 DAG `inmet_download_raw` para baixar os dados anuais do INMET e
