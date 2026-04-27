@@ -1,0 +1,14 @@
+{
+  "model_name": "weather_forecasting_h336",
+  "registry_version": "15",
+  "run_id": "999f538f3d12444facd2a2d8878daef2",
+  "experiment_name": "weather_forecasting_h336",
+  "mape": 0.11777937412261963,
+  "promoted_at": "2026-04-26",
+  "serving_data": {
+    "directory": "serving_data",
+    "metadata_file": "serving_data/serving_data_metadata.json",
+    "source_file": "C:\\Users\\MaquinaLegal\\projetos\\WeatherOps\\data\\spec\\salvador\\dados.parquet",
+    "sha256": "b47297a57ddf4ce772919adc2d492498120f6c671e75fdc827c694323a0a6e1f"
+  }
+}
