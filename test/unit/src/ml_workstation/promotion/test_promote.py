@@ -179,6 +179,32 @@ class TestPromoteRun:
 
         client.set_registered_model_alias.assert_not_called()
         client.set_model_version_tag.assert_not_called()
+        client.get_model_version_by_alias.assert_called_once_with(
+            "weather_forecasting_h72", "production"
+        )
+
+    def test_rejection_keeps_existing_production_version_id_unchanged(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Ao rejeitar candidato pior, o alias production não deve ser reatribuído."""
+        current_mv = _make_model_version("42", "run-prod", mape=4.0)
+        run = _make_run("run-bad", mape=9.0)
+        client = self._make_client(run, current_mv=current_mv)
+
+        monkeypatch.setattr(promote_module, "resolve_tracking_uri", lambda uri: None)
+
+        with patch("src.ml_workstation.promotion.promote.mlflow.MlflowClient", return_value=client):
+            with pytest.raises(PromotionRejectedError):
+                promote_run(
+                    run_id="run-bad",
+                    experiment_name="weather_forecasting_h72",
+                )
+
+        client.set_registered_model_alias.assert_not_called()
+        client.set_model_version_tag.assert_not_called()
+        client.get_model_version_by_alias.assert_called_once_with(
+            "weather_forecasting_h72", "production"
+        )
 
     def test_force_bypasses_regression_check(
         self, monkeypatch: pytest.MonkeyPatch
@@ -698,14 +724,25 @@ class TestResolveExportDir:
         assert _resolve_export_dir(None) is None
 
     def test_resolves_relative_path_from_workspace_root(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        monkeypatch.setattr(
+            run_promote_module,
+            "workspace_root",
+            lambda: tmp_path,
+        )
+        resolved = _resolve_export_dir("src/api/ml_models")
+        assert resolved == str((tmp_path / "src/api/ml_models").resolve())
+
+    def test_keeps_windows_absolute_path_without_prefixing_workspace_root(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(
             run_promote_module,
             "workspace_root",
-            lambda: Path("C:/repo"),
+            lambda: Path("/home/runner/work/WeatherOps"),
         )
-        resolved = _resolve_export_dir("src/api/ml_models")
+        resolved = _resolve_export_dir("C:/repo/src/api/ml_models")
         assert resolved == os.path.normpath("C:/repo/src/api/ml_models")
 
 

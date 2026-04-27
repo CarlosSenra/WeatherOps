@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -16,6 +17,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+_WINDOWS_ABS_PATH_RE = re.compile(r"^[a-zA-Z]:[\\/]")
+_WINDOWS_UNC_PATH_RE = re.compile(r"^\\\\[^\\]+\\[^\\]+")
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -95,9 +98,12 @@ def _build_parser() -> argparse.ArgumentParser:
 def _resolve_export_dir(export_dir: str | None) -> str | None:
     if not export_dir:
         return None
-    export_path = Path(export_dir)
+    raw_path = export_dir.strip()
+    export_path = Path(raw_path)
     if export_path.is_absolute():
         return str(export_path.resolve())
+    if _WINDOWS_ABS_PATH_RE.match(raw_path) or _WINDOWS_UNC_PATH_RE.match(raw_path):
+        return os.path.normpath(raw_path)
     return str((workspace_root() / export_path).resolve())
 
 
