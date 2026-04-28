@@ -204,6 +204,10 @@ class Settings(BaseSettings):
     accuracy_db_path: str = "/app/data/accuracy.db"
     accuracy_eval_interval_seconds: int = 3600
 
+    # Agente LLM (Gemini 2.5 Flash)
+    google_api_key: str | None = None
+    agent_max_message_chars: int = 8000
+
     # Metadados da API
     api_title: str = "WeatherOps ML Serving API"
     api_version: str = "1.0.0"

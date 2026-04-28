@@ -135,6 +135,16 @@ def create_app() -> FastAPI:
     # ── Roteadores ─────────────────────────────────────────────────────────
     app.include_router(health.router)
     app.include_router(forecast.router)
+    try:
+        from src.api_agent.routers.agent import router as agent_router
+
+        app.include_router(agent_router)
+    except ImportError as exc:
+        logger.warning(
+            "Router /v1/agent omitido — falha ao importar módulo do agente (%s). "
+            "Garanta as dependências no ambiente da API (ex.: poetry install --only api,agent).",
+            exc,
+        )
 
     # ── Métricas Prometheus ────────────────────────────────────────────────
     setup_metrics(app)
