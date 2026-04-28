@@ -1,0 +1,34 @@
+# Opcional: smoke HTTP contra uma API WeatherOps já acessível na rede do runner.
+# Dispare manualmente e informe a URL base (ex. túnel ou host interno onde a API escuta).
+name: API smoke (HTTP)
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: "Base URL da API (ex. http://127.0.0.1:8888)"
+        required: true
+        default: "http://127.0.0.1:8000"
+      skip_agent:
+        description: "1 para não chamar /v1/agent/chat"
+        required: false
+        default: "1"
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install httpx
+        run: pip install "httpx>=0.28.1,<0.29.0"
+
+      - name: Run smoke script
+        env:
+          WEATHEROPS_API_BASE_URL: ${{ github.event.inputs.api_base_url }}
+          SMOKE_SKIP_AGENT: ${{ github.event.inputs.skip_agent }}
+        run: python scripts/smoke_api.py

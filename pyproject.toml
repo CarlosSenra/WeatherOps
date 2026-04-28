@@ -65,6 +65,12 @@ pytorch-forecasting = ">=1.1.0,<2.0.0"
 lightning = ">=2.4.0,<3.0.0"
 prometheus-fastapi-instrumentator = ">=7.0.0,<8.0.0"
 
+# Dependências auxiliares de avaliação do agente
+[tool.poetry.group.agent.dependencies]
+langchain-google-genai = ">=2.0.0,<3.0.0"
+ragas = ">=0.2.0,<0.3.0"
+datasets = ">=3.0.0,<4.0.0"
+
 [tool.pytest.ini_options]
 testpaths = ["test"]
 python_files = ["test_*.py"]
@@ -72,7 +78,8 @@ addopts = "-ra"
 asyncio_mode = "auto"
 markers = [
     "unit: fast unit tests",
-    "integration: slower integration tests"
+    "integration: slower integration tests",
+    "live_api: real HTTP against WEATHEROPS_API_BASE_URL (see scripts/smoke_api.py)"
 ]
 
 [tool.coverage.run]

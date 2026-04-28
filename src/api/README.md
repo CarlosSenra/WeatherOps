@@ -4,12 +4,18 @@ API REST assíncrona para servir modelos de previsão meteorológica TFT e N-BEA
 carregados do MLflow Model Registry. Construída com FastAPI, expõe previsões
 horárias de temperatura para horizontes de 72, 168 e 336 horas.
 
+Opcionalmente, com `GEMINI_API_KEY` e dependências do grupo Poetry `agent`, o router
+`POST /v1/agent/chat` expõe um assistente (Gemini + LangGraph + RAG BM25) documentado em
+`../../docs/agent_benchmark.md` e `../api_agent/`.
+
+## Smoke (HTTP contra API em execução)
+
+Com a API no ar (`uvicorn` ou `docker compose --profile api`), defina `WEATHEROPS_API_BASE_URL` (ex. `http://127.0.0.1:8888`) e rode na raiz do repositório: `python scripts/smoke_api.py`. Opcional: `SMOKE_REFERENCE_DATE`, `SMOKE_FORECAST_HORIZON`, `SMOKE_SKIP_AGENT=1`. Teste pytest equivalente: `pytest test/integration/test_live_api_smoke.py -m live_api -s`.
+
 ## Documentos Relacionados
 
 - Treinamento de modelos: `../ml_workstation/README.md`
 - Promoção para produção: `../ml_workstation/promotion/PROMOTION.md`
-- Monitoramento do modelo: `../../docs/MODEL_MONITORING.md`
-- Guia de desenvolvimento: `../../docs/DEVELOPMENT_SETUP.md`
 
 ## Estrutura
 
@@ -284,8 +290,7 @@ Para múltiplos workers ou pods, use Redis para compartilhar estado.
 A API é instrumentada automaticamente via `prometheus-fastapi-instrumentator`.
 O endpoint `/metrics` expõe métricas no formato Prometheus sem nenhuma configuração adicional.
 Além das métricas HTTP, a API registra latência de inferência, uso de cache e
-qualidade do modelo em produção. O guia detalhado está em
-`../../docs/MODEL_MONITORING.md`.
+qualidade do modelo em produção.
 
 ### Métricas expostas
 
