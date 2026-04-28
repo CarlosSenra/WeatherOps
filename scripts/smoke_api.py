@@ -59,6 +59,14 @@ def run_smoke(base: str, *, reference_date: str, horizon: int, skip_agent: bool)
         if "http_requests_total" not in r_metrics.text and "http_request_duration" not in r_metrics.text:
             raise RuntimeError("/metrics body missing expected Prometheus series")
 
+        if not skip_agent:
+            r_openapi = client.get(f"{base}/openapi.json")
+            if r_openapi.status_code != 200:
+                raise RuntimeError(f"/openapi.json HTTP {r_openapi.status_code}")
+            paths = r_openapi.json().get("paths", {})
+            if "/v1/agent/chat" not in paths:
+                raise RuntimeError("OpenAPI missing /v1/agent/chat (agent router not registered)")
+
         body = {
             "reference_date": reference_date,
             "model_type": "tft",
@@ -82,18 +90,12 @@ def run_smoke(base: str, *, reference_date: str, horizon: int, skip_agent: bool)
             print("Skipping /v1/agent/chat (--skip-agent or SMOKE_SKIP_AGENT=1).")
             return
 
-        ag = client.post(f"{base}/v1/agent/chat", json={"message": "Responde só: ok."})
+        ag = client.post(f"{base}/v1/agent/chat", json={"message": "previsao 72h para 2024-06-01"})
         if ag.status_code == 200:
             print("Agent /v1/agent/chat: 200")
             return
-        if ag.status_code == 503:
-            try:
-                detail = ag.json().get("detail", "")
-            except Exception:
-                detail = ag.text
-            if "GEMINI" in str(detail).upper() or "desativado" in str(detail).lower():
-                print("Agent disabled (503) — acceptable for smoke.")
-                return
+        if ag.status_code == 400:
+            raise RuntimeError(f"/v1/agent/chat 400 (roteamento/execução): {ag.text[:500]}")
         if ag.status_code == 422:
             raise RuntimeError(f"/v1/agent/chat 422: {ag.text[:500]}")
         raise RuntimeError(f"/v1/agent/chat unexpected HTTP {ag.status_code}: {ag.text[:500]}")
