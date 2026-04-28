@@ -9,6 +9,8 @@ services:
     container_name: weatherops-api
     ports:
       - "8888:8000"
+    env_file:
+      - ../../.env
     environment:
       MLFLOW_TRACKING_URI: file:///app/mlruns
       # Modelos exportados (promote --export-dir); montar volume ml_models abaixo.

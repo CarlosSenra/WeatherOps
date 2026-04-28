@@ -31,10 +31,11 @@ COPY pyproject.toml poetry.lock /app/
 RUN poetry --version && poetry check --lock
 RUN --mount=type=cache,target=/root/.cache/pypoetry \
     --mount=type=cache,target=/root/.cache/pip \
-    poetry install --only api --no-root
+    poetry install --only api,agent --no-root
 
 # ── Application code ──────────────────────────────────────────────────────────
 COPY src/api/ /app/src/api/
+COPY src/api_agent/ /app/src/api_agent/
 COPY src/ml_workstation/config/ /app/src/ml_workstation/config/
 COPY src/ml_workstation/data/ /app/src/ml_workstation/data/
 COPY src/ml_workstation/evaluation/mlflow_helpers.py /app/src/ml_workstation/evaluation/mlflow_helpers.py
