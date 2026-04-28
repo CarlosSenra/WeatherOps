@@ -14,6 +14,8 @@ Métricas customizadas de ML
 - ``weatherops_inference_duration_seconds``     — histograma de latência de inferência por modelo
 - ``weatherops_cache_hits_total``               — contador de respostas servidas do cache
 - ``weatherops_cache_misses_total``             — contador de requisições que exigiram inferência
+- ``weatherops_agent_chat_requests_total``      — contador do endpoint ``/v1/agent/chat`` (label ``status``)
+- ``weatherops_agent_chat_duration_seconds``    — histograma de latência do agente
 
 Uso
 ---
@@ -75,6 +77,22 @@ model_mape = Gauge(
     "weatherops_model_mape",
     "Erro Percentual Absoluto Médio (MAPE) por modelo e bucket de horizonte",
     labelnames=["model_key", "bucket"],
+)
+
+# ---------------------------------------------------------------------------
+# Agente LLM (/v1/agent/chat)
+# ---------------------------------------------------------------------------
+
+agent_chat_requests_total = Counter(
+    "weatherops_agent_chat_requests_total",
+    "Requisições ao endpoint do agente meteorológico",
+    labelnames=["status"],
+)
+
+agent_chat_duration_seconds = Histogram(
+    "weatherops_agent_chat_duration_seconds",
+    "Duração ponta a ponta do POST /v1/agent/chat (inclui chamadas ao Gemini)",
+    buckets=[0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0],
 )
 
 
