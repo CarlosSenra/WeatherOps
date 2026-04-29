@@ -144,5 +144,3 @@ def map_csv_files_by_name(root_path: str, search_names: List[str]) -> Dict[str, 
     logger.info(f"Resultado final: {output_data.results}")
     
     return output_data.results
-
-#test_dict = map_csv_files_by_name(root_path='../data/raw/', search_names=['salvador_'])

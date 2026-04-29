@@ -118,13 +118,29 @@ curl -X POST http://localhost:8888/v1/agent/chat \
 
 O RAG enriquece respostas sobre padrões sazonais com dados históricos reais do município.
 
-### Pré-requisitos do RAG
+### Pré-requisito
 
-- Um modelo já promovido **com `--export-dir`** (o Parquet de serving precisa existir em
-  `src/api/ml_models/<model>/serving_data/`)
-- `GOOGLE_API_KEY` configurada no ambiente
+- `GOOGLE_API_KEY` configurada no ambiente (passo 3)
 
-### Gerar a base vetorial
+### Quick start — gerar a base vetorial (repositório clonado)
+
+O repositório já inclui o feature store do município. Para popular o ChromaDB a partir
+dele basta um comando:
+
+```bash
+poetry run python scripts/update_kb.py
+```
+
+Saída esperada:
+```
+Construindo knowledge base...
+OK — 13 documentos inseridos em src/api_agent/knowledge/chroma_db
+```
+
+### Após promover um novo modelo
+
+Se você re-treinou e promoveu um modelo com `run_promote`, use a flag
+`--update-knowledge-base` para regenerar a base vetorial com os novos perfis:
 
 ```bash
 poetry run python -m src.ml_workstation.promotion.run_promote \
@@ -133,16 +149,8 @@ poetry run python -m src.ml_workstation.promotion.run_promote \
     --update-knowledge-base
 ```
 
-Saída esperada:
-```
-Melhor run promovido com sucesso.
-  Experimento : weather_tft_h72
-  Métrica     : mape
-  Versão      : 3
-Base vetorial atualizada: 13 chunks em .../src/api_agent/knowledge/chroma_db
-```
+### Verificar os arquivos gerados
 
-Verifique os arquivos gerados:
 ```bash
 # Feature store (JSONs com perfis do município)
 ls src/api/ml_models/weather_forecasting_h72/feature_store/
@@ -211,7 +219,7 @@ poetry run python scripts/smoke_api.py
 | Sintoma | Causa provável | Solução |
 |---------|---------------|---------|
 | `400 GOOGLE_API_KEY não configurada` | Variável ausente ou API não reiniciada | Adicione ao `.env` e reinicie |
-| `rag_context_snippets` sempre vazio | ChromaDB não gerado | Execute `run_promote --update-knowledge-base` |
+| `rag_context_snippets` sempre vazio | ChromaDB não gerado | Execute `poetry run python scripts/update_kb.py` |
 | `ImportError: No module named 'chromadb'` | Grupo `agent` não instalado | `poetry install --with agent` |
 | `Router /v1/agent omitido` no log | Deps do agente ausentes | `poetry install --with agent` e reiniciar |
 | `422 Mensagem excede agent_max_message_chars` | Mensagem muito longa | Reduza ou aumente `AGENT_MAX_MESSAGE_CHARS` no `.env` |
