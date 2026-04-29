@@ -234,3 +234,5 @@ src/api/ml_models/
 !src/api/ml_models/**/manifest.json
 !src/api/ml_models/**/data/
 !src/api/ml_models/**/data/**
+
+lightning_logs/

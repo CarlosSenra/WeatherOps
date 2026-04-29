@@ -25,8 +25,8 @@ jobs:
         with:
           version: latest
 
-      - name: Install dependencies (dev)
-        run: poetry install --with dev --no-interaction
+      - name: Install dependencies (dev + agent)
+        run: poetry install --with dev --with agent --no-interaction
 
       - name: Run coverage tests
         run: poetry run pytest --cov=core --cov=src --cov-report=term-missing --cov-fail-under=60
