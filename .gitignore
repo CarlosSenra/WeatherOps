@@ -239,3 +239,4 @@ lightning_logs/
 
 # ChromaDB — artefato gerado pelo promote
 src/api_agent/knowledge/
+**/chroma.sqlite3
