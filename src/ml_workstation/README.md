@@ -10,8 +10,6 @@ LSTM e Transformer usam loop de treinamento manual PyTorch; TFT e N-BEATS usam p
 - Arquitetura: `src/ml_workstation/ARCHITECTURE.md`
 - Avaliacao: `src/ml_workstation/evaluation/README.md`
 - Promocao: `src/ml_workstation/promotion/PROMOTION.md`
-- Guia geral: `docs/DEVELOPMENT_SETUP.md`
-- Troubleshooting: `docs/TROUBLESHOOTING.md`
 
 ## Estrutura
 
