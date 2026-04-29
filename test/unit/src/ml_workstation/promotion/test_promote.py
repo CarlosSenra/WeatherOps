@@ -705,6 +705,8 @@ class _FixedArgs:
         self.force = False
         self.export_dir = None
         self.strict_export = True
+        self.update_knowledge_base = False
+        self.knowledge_base_path = None
 
 
 class _FixedParser:

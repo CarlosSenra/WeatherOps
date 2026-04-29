@@ -181,7 +181,7 @@ def test_forecast_with_prediction_logger_does_not_break(valid_horizon: int, fres
     predictor = MagicMock()
     predictor.predict = AsyncMock(return_value=resp)
     app = _make_app(predictor)
-    app.state.prediction_logger = MagicMock()
+    app.state.prediction_logger = MagicMock(log=AsyncMock())
     with patch("src.api.routers.forecast.get_cache", return_value=fresh_cache):
         client = TestClient(app)
         r = client.post(f"/v1/forecast/{valid_horizon}", json=_valid_body())
