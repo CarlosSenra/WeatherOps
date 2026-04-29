@@ -1,0 +1,5 @@
+mode: all
+include:
+  - salvador
+exclude: []
+slug_overrides: {}

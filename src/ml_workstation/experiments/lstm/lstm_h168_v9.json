@@ -1,0 +1,34 @@
+{
+  "experiment_name": "weather_forecasting_h168",
+  "run_name": "lstm_h168_v9",
+  "epochs": 52,
+  "batch_size": 112,
+  "learning_rate": 0.001632,
+  "weight_decay": 6.4e-05,
+  "early_stopping_patience": 6,
+  "checkpoint_dir": "/app/artifacts",
+  "device": "cuda",
+  "data": {
+    "parquet_path": "/app/data/spec/salvador",
+    "target_columns": [
+      "temp_ar_c"
+    ],
+    "sequence_length": 368,
+    "horizon": 168,
+    "train_ratio": 0.8,
+    "val_ratio": 0.1
+  },
+  "model": {
+    "hidden_size": 96,
+    "num_layers": 3,
+    "dropout": 0.13,
+    "model_type": "lstm"
+  },
+  "governance": {
+    "model_name": "weather_lstm_h168",
+    "model_version": "9.0.0",
+    "model_type": "regression",
+    "risk_level": "medium",
+    "fairness_checked": false
+  }
+}

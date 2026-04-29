@@ -1,0 +1,33 @@
+{
+  "experiment_name": "weather_forecasting_h336",
+  "run_name": "tft_h336_fast",
+  "epochs": 2,
+  "batch_size": 256,
+  "learning_rate": 0.03,
+  "weight_decay": 0.0001,
+  "early_stopping_patience": 1,
+  "checkpoint_dir": "/app/artifacts",
+  "device": "cpu",
+  "data": {
+    "parquet_path": "/app/data/spec/salvador",
+    "target_columns": ["temp_ar_c"],
+    "sequence_length": 504,
+    "horizon": 336,
+    "train_ratio": 0.2,
+    "val_ratio": 0.1
+  },
+  "model": {
+    "model_type": "tft",
+    "hidden_size": 64,
+    "attention_head_size": 4,
+    "hidden_continuous_size": 16,
+    "dropout": 0.1
+  },
+  "governance": {
+    "model_name": "weather_tft_h336",
+    "model_version": "1.0.0",
+    "model_type": "regression",
+    "risk_level": "medium",
+    "fairness_checked": false
+  }
+}

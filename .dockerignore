@@ -1,0 +1,26 @@
+# VCS / metadados locais
+.git/
+.dvc/
+.vscode/
+**/.vscode/
+
+# Ambientes e caches Python
+.venv/
+**/.venv/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+.pytest_cache/
+**/.pytest_cache/
+
+# Dados e artefatos grandes montados em runtime
+data/
+mlruns/
+src/ml_workstation/mlruns/
+src/api/ml_models/
+evaluation_results/
+notebooks/
+
+# Logs e saídas operacionais
+**/logs/
+src/data_airflow/logs/

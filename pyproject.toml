@@ -5,11 +5,23 @@ description = ""
 authors = [
     {name = "Carlos Rafael Senra Brito"}
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.15"
 dependencies = [
     "dvc (>=3.67.0,<4.0.0)",
-    "pandas (>=3.0.1,<4.0.0)",
-    "pydantic (>=2.12.5,<3.0.0)"
+    "pandas (>=2.2.0,<3.0.0)",
+    "pydantic (>=2.12.5,<3.0.0)",
+    "pydantic-settings (>=2.9.0,<3.0.0)",
+    "plotly (>=6.6.0,<7.0.0)",
+    "nbformat (>=5.10.4,<6.0.0)",
+    "torch (>=2.3.0,<3.0.0)",
+    "mlflow (>=3.0.0,<4.0.0)",
+    "scikit-learn (>=1.5.0,<2.0.0)",
+    "joblib (>=1.4.0,<2.0.0)",
+    "fastapi (>=0.115.0,<1.0.0)",
+    "uvicorn[standard] (>=0.34.0,<1.0.0)",
+    "prometheus-fastapi-instrumentator (>=7.0.0,<8.0.0)",
+    "pytorch-forecasting (>=1.1.0,<2.0.0)",
+    "lightning (>=2.4.0,<3.0.0)"
 ]
 
 
@@ -19,5 +31,62 @@ build-backend = "poetry.core.masonry.api"
 
 [dependency-groups]
 dev = [
-    "ipykernel (>=7.2.0,<8.0.0)"
+    "ipykernel (>=7.2.0,<8.0.0)",
+    "pytest (>=9.0.2,<10.0.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)",
+    "pytest-asyncio (>=1.0.0,<2.0.0)",
+    "httpx (>=0.28.1,<0.29.0)"
 ]
+
+[tool.poetry]
+packages = [
+    { include = "core" },
+    { include = "src" }
+]
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[tool.poetry.group.api.dependencies]
+fastapi = ">=0.115.0,<1.0.0"
+uvicorn = {version = ">=0.34.0,<1.0.0", extras = ["standard"]}
+pydantic = ">=2.12.5,<3.0.0"
+pydantic-settings = ">=2.9.0,<3.0.0"
+pandas = ">=2.2.0,<3.0.0"
+pyarrow = ">=18.0.0,<23.0.0"
+numpy = ">=1.26.0,<3.0.0"
+torch = {version = ">=2.3.0,<3.0.0", source = "pytorch-cpu"}
+mlflow = ">=3.0.0,<4.0.0"
+scikit-learn = ">=1.5.0,<2.0.0"
+joblib = ">=1.4.0,<2.0.0"
+pytorch-forecasting = ">=1.1.0,<2.0.0"
+lightning = ">=2.4.0,<3.0.0"
+prometheus-fastapi-instrumentator = ">=7.0.0,<8.0.0"
+
+# Dependências auxiliares de avaliação do agente
+[tool.poetry.group.agent.dependencies]
+langchain-google-genai = ">=2.0.0,<3.0.0"
+langchain-chroma = ">=0.2.0,<1.0.0"
+chromadb = ">=1.0.0,<2.0.0"
+ragas = ">=0.2.0,<0.3.0"
+datasets = ">=3.0.0,<4.0.0"
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+asyncio_mode = "auto"
+markers = [
+    "unit: fast unit tests",
+    "integration: slower integration tests",
+    "live_api: real HTTP against WEATHEROPS_API_BASE_URL (see scripts/smoke_api.py)"
+]
+
+[tool.coverage.run]
+source = ["core", "src"]
+
+[tool.coverage.report]
+fail_under = 60
+show_missing = true

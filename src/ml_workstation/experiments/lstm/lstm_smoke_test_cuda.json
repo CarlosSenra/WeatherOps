@@ -1,0 +1,32 @@
+{
+    "experiment_name": "weather_forecasting_smoke",
+    "run_name": "lstm_smoke_test_cuda",
+    "epochs": 80,
+    "batch_size": 128,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "early_stopping_patience": 1,
+    "checkpoint_dir": "/app/artifacts",
+    "device": "cuda",
+    "data": {
+        "parquet_path": "/app/data/spec/salvador",
+        "target_columns": ["temp_ar_c"],
+        "sequence_length": 24,
+        "horizon": 1,
+        "train_ratio": 0.8,
+        "val_ratio": 0.1
+    },
+    "model": {
+        "model_type": "lstm",
+        "hidden_size": 32,
+        "num_layers": 1,
+        "dropout": 0.0
+    },
+    "governance": {
+        "model_name": "weather_lstm_smoke_test_cuda",
+        "model_version": "0.1.0",
+        "model_type": "regression",
+        "risk_level": "low",
+        "fairness_checked": false
+    }
+}

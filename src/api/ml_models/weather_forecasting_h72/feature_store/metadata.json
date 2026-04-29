@@ -1,0 +1,17 @@
+{
+  "municipio": "salvador",
+  "parquet_path": "src\\api\\ml_models\\weather_forecasting_h72\\serving_data\\dados.parquet",
+  "sha256": "b47297a57ddf4ce772919adc2d492498120f6c671e75fdc827c694323a0a6e1f",
+  "date_range": {
+    "start": "2024-01-02T00:00:00",
+    "end": "2026-03-31T23:00:00"
+  },
+  "row_count": 19608,
+  "profile_columns": [
+    "temp_ar_c",
+    "umidade_rel_ar_percent",
+    "pressao_atm_estacao_mb",
+    "precipitacao_total_mm"
+  ],
+  "snapshot_at": "2026-04-28T23:10:45.940700+00:00"
+}

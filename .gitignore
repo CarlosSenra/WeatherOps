@@ -186,7 +186,7 @@ cython_debug/
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
 #  and can be added to the global gitignore or merged into this file. However, if you prefer, 
 #  you could uncomment the following to ignore the entire vscode folder
-# .vscode/
+.vscode/
 
 # Ruff stuff:
 .ruff_cache/
@@ -217,3 +217,26 @@ __marimo__/
 .dvc/config.local
 
 dvc.log
+
+src/data/logs/*
+
+src/ml_workflow/mlruns/*
+
+# ML Workstation — artefatos gerados localmente
+src/ml_workstation/mlruns/
+src/ml_workstation/artifacts/
+
+# API — modelos exportados para serving (promote --export-dir)
+src/api/ml_models/
+!src/api/ml_models/
+!src/api/ml_models/**/
+!src/api/ml_models/**/MLmodel
+!src/api/ml_models/**/manifest.json
+!src/api/ml_models/**/data/
+!src/api/ml_models/**/data/**
+
+lightning_logs/
+
+# ChromaDB — artefato gerado pelo promote
+src/api_agent/knowledge/
+**/chroma.sqlite3

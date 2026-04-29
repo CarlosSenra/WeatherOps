@@ -1,0 +1,36 @@
+{
+  "experiment_name": "weather_forecasting_h72",
+  "run_name": "transformer_h72_v10",
+  "epochs": 60,
+  "batch_size": 96,
+  "learning_rate": 0.0014,
+  "weight_decay": 6e-05,
+  "early_stopping_patience": 5,
+  "checkpoint_dir": "/app/artifacts",
+  "device": "cuda",
+  "data": {
+    "parquet_path": "/app/data/spec/salvador",
+    "target_columns": [
+      "temp_ar_c"
+    ],
+    "sequence_length": 192,
+    "horizon": 72,
+    "train_ratio": 0.8,
+    "val_ratio": 0.1
+  },
+  "model": {
+    "hidden_size": 112,
+    "num_layers": 3,
+    "dropout": 0.12,
+    "num_heads": 4,
+    "ffn_dim": 224,
+    "model_type": "transformer"
+  },
+  "governance": {
+    "model_name": "weather_transformer_h72",
+    "model_version": "10.0.0",
+    "model_type": "regression",
+    "risk_level": "medium",
+    "fairness_checked": false
+  }
+}

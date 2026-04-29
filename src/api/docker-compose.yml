@@ -1,0 +1,102 @@
+services:
+
+  # ── Serving API ─────────────────────────────────────────────────────────────
+  weatherops-api:
+    build:
+      context: ../..                  # repo root (WeatherOps/)
+      dockerfile: src/api/Dockerfile
+    image: weatherops-api:latest
+    container_name: weatherops-api
+    ports:
+      - "8888:8000"
+    env_file:
+      - ../../.env
+    environment:
+      MLFLOW_TRACKING_URI: file:///app/mlruns
+      # Modelos exportados (promote --export-dir); montar volume ml_models abaixo.
+      WEATHEROPS_MODEL_ROOT: /app/ml_models
+      PARQUET_PATH: /app/data/spec
+      DEVICE: cpu
+      # Cache (set CACHE_BACKEND=redis + REDIS_URL to enable Redis)
+      CACHE_BACKEND: memory
+      CACHE_TTL_SECONDS: "3600"
+      GIT_PYTHON_REFRESH: quiet
+      ACCURACY_EVAL_INTERVAL_SECONDS: "10"
+    volumes:
+      # Source code (hot-reload without rebuild during development)
+      - ../../core:/app/core
+      - ../../src:/app/src
+      # Shared MLflow store — read-write required for MLflow FileStore .trash init
+      - ../ml_workstation/mlruns:/app/mlruns
+      # Parquet dataset — read-only
+      - ../../data/spec:/app/data/spec:ro
+      # Modelos PyTorch exportados pelo promote (opcional; prioridade sobre só mlruns)
+      - ../../src/api/ml_models:/app/ml_models:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s           # allow time for model loading at startup
+    restart: unless-stopped
+    profiles:
+      - api
+
+  # ── MLflow UI (shared with training compose) ─────────────────────────────────
+  mlflow-ui:
+    image: python:3.12-slim
+    container_name: weatherops-mlflow-ui-api
+    command: >
+      bash -c "pip install mlflow --quiet &&
+               mlflow ui --host 0.0.0.0 --port 5000
+                         --backend-store-uri file:///app/mlruns"
+    ports:
+      # Host 5001 avoids conflicts when another process already uses 5000.
+      - "5001:5000"
+    volumes:
+      - ../ml_workstation/mlruns:/app/mlruns
+    restart: unless-stopped
+    profiles:
+      - api
+
+  # ── Prometheus ───────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: weatherops-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - weatherops-api
+    restart: unless-stopped
+    profiles:
+      - api
+
+  # ── Grafana ──────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: weatherops-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    profiles:
+      - api
+
+volumes:
+  prometheus_data:
+  grafana_data:

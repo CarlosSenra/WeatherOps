@@ -1,0 +1,10 @@
+{
+  "experiment_name": "weather_forecasting_h72",
+  "model_name": "weather_forecasting_h72",
+  "registry_version": "23",
+  "run_id": "074bf60db9c74aac9f836f59d06e8a33",
+  "source_file": "C:\\Users\\MaquinaLegal\\projetos\\WeatherOps\\data\\spec\\salvador\\dados.parquet",
+  "exported_file": "serving_data\\dados.parquet",
+  "sha256": "b47297a57ddf4ce772919adc2d492498120f6c671e75fdc827c694323a0a6e1f",
+  "exported_at": "2026-04-26T18:22:58.879174+00:00"
+}

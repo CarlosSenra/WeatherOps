@@ -1,4 +1,7 @@
 [core]
     remote = meu_armazenamento_local
+    autostage = true
+[cache]
+    type = "hardlink,symlink"
 ['remote "meu_armazenamento_local"']
     url = C:/Users/MaquinaLegal/c/Users/MaquinaLegal/repositorio_dados/dados_climaticos
