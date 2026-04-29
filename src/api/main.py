@@ -32,7 +32,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.config import ALL_SERVING_COLUMNS, get_settings
 from src.api.metrics import setup_metrics
-from src.api.routers import forecast, health
+from src.api.routers import forecast, health, internal
 from src.api.services.accuracy_evaluator import AccuracyEvaluator
 from src.api.services.data_service import DataService
 from src.api.services.model_registry import ModelRegistry
@@ -154,6 +154,7 @@ def create_app() -> FastAPI:
     # ── Roteadores ─────────────────────────────────────────────────────────
     app.include_router(health.router)
     app.include_router(forecast.router)
+    app.include_router(internal.router)
     try:
         from src.api_agent.routers.agent import router as agent_router
 

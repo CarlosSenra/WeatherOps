@@ -69,6 +69,9 @@ async def run_agent_chat(
             "GOOGLE_API_KEY não configurada. Defina a variável de ambiente antes de usar o agente."
         )
 
+    if retriever is None:
+        agent_rag_queries_total.labels(status="unavailable").inc()
+
     tools = [
         make_period_forecast_tool(predictor),
         make_forecast_tool(predictor),
