@@ -88,7 +88,8 @@ def run_evaluation(records: list[dict], api_key: str) -> dict[str, float]:
         embeddings=emb_wrapper,
     )
 
-    return {k: float(v) for k, v in result.items() if isinstance(v, (int, float))}
+    df = result.to_pandas()
+    return {col: float(df[col].mean()) for col in df.columns if df[col].dtype.kind == "f"}
 
 
 # ---------------------------------------------------------------------------
@@ -118,15 +119,15 @@ def write_results(scores: dict[str, float], n_examples: int, output_dir: Path) -
     print(f"Resultados CSV:  {csv_path}")
 
 
-def update_prometheus_gauges(scores: dict[str, float]) -> None:
-    try:
-        from src.api.metrics import agent_ragas_score  # type: ignore[import]
+def update_prometheus_gauges(scores: dict[str, float], api_base_url: str = "http://localhost:8888") -> None:
+    import requests
 
-        for metric_name, score in scores.items():
-            agent_ragas_score.labels(metric_name=metric_name).set(score)
-        print("Gauges Prometheus atualizados.")
-    except ImportError:
-        print("Aviso: gauges Prometheus não atualizados (src não está no path).")
+    try:
+        r = requests.post(f"{api_base_url}/v1/internal/ragas", json={"scores": scores}, timeout=5)
+        r.raise_for_status()
+        print(f"Gauges Prometheus atualizados via API ({api_base_url}).")
+    except Exception as exc:
+        print(f"Aviso: não foi possível atualizar gauges via API — {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -143,7 +144,8 @@ def main() -> int:
         help="Diretório de saída (default: evaluation_results/).",
     )
     p.add_argument("--limit", type=int, default=None, help="Avaliar apenas os primeiros N exemplos.")
-    p.add_argument("--update-prometheus", action="store_true", help="Atualizar gauges weatherops_agent_ragas_score.")
+    p.add_argument("--update-prometheus", action="store_true", help="Atualizar gauges weatherops_agent_ragas_score via API.")
+    p.add_argument("--api-url", default="http://localhost:8888", help="URL base da API WeatherOps (default: http://localhost:8888).")
     args = p.parse_args()
 
     api_key = os.environ.get("GOOGLE_API_KEY", "")
@@ -167,7 +169,7 @@ def main() -> int:
     write_results(scores, n_examples=len(records), output_dir=args.output_dir)
 
     if args.update_prometheus:
-        update_prometheus_gauges(scores)
+        update_prometheus_gauges(scores, api_base_url=args.api_url)
 
     return 0
 

@@ -40,19 +40,14 @@ def _baseline_lengths(rows: list[dict]) -> list[int]:
 
 
 def _embed_texts(texts: list[str], api_key: str) -> list[list[float]]:
-    import google.generativeai as genai  # type: ignore[import-untyped]
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-    genai.configure(api_key=api_key)
-    result = genai.embed_content(
+    embedder = GoogleGenerativeAIEmbeddings(
         model="models/gemini-embedding-001",
-        content=texts,
-        task_type="RETRIEVAL_QUERY",
+        google_api_key=api_key,
+        task_type="retrieval_query",
     )
-    embeddings = result["embedding"]
-    # API retorna lista única quando content é lista de 1 elemento
-    if isinstance(embeddings[0], float):
-        return [embeddings]
-    return embeddings
+    return embedder.embed_documents(texts)
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -84,14 +79,15 @@ def compute_semantic_drift(baseline_texts: list[str], current_texts: list[str], 
     return round(1.0 - sim, 4)
 
 
-def _update_prometheus(score: float) -> None:
-    try:
-        from src.api.metrics import query_semantic_drift_score  # type: ignore[import]
+def _update_prometheus(score: float, api_base_url: str = "http://localhost:8888") -> None:
+    import requests
 
-        query_semantic_drift_score.set(score)
-        print(f"Prometheus gauge atualizado: weatherops_query_semantic_drift_score={score}")
-    except ImportError:
-        print("Aviso: não foi possível atualizar gauge Prometheus (src não está no path).")
+    try:
+        r = requests.post(f"{api_base_url}/v1/internal/drift", json={"score": score}, timeout=5)
+        r.raise_for_status()
+        print(f"Prometheus gauge atualizado via API: weatherops_query_semantic_drift_score={score}")
+    except Exception as exc:
+        print(f"Aviso: não foi possível atualizar gauge via API — {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +100,8 @@ def main() -> int:
     p.add_argument("--queries-file", type=Path, default=None, help="Um texto por linha (queries reais).")
     p.add_argument("--semantic", action="store_true", help="Ativa deriva semântica (requer GOOGLE_API_KEY).")
     p.add_argument("--threshold", type=float, default=0.3, help="Limiar de alerta para deriva semântica (default 0.3).")
-    p.add_argument("--update-prometheus", action="store_true", help="Atualiza gauge weatherops_query_semantic_drift_score.")
+    p.add_argument("--update-prometheus", action="store_true", help="Atualiza gauge weatherops_query_semantic_drift_score via API.")
+    p.add_argument("--api-url", default="http://localhost:8888", help="URL base da API WeatherOps (default: http://localhost:8888).")
     args = p.parse_args()
 
     golden_rows = _load_golden()
@@ -138,7 +135,7 @@ def main() -> int:
         print(f"Drift semântico: {score:.4f} (limiar={args.threshold})")
 
         if args.update_prometheus:
-            _update_prometheus(score)
+            _update_prometheus(score, api_base_url=args.api_url)
 
         if score > args.threshold:
             print(f"ALERTA: drift semântico {score:.4f} excede limiar {args.threshold}", file=sys.stderr)
