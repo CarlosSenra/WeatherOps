@@ -26,3 +26,8 @@ def get_data_service(request: Request) -> DataService:
 def get_predictor(request: Request) -> Predictor:
     """Retorna o ``Predictor`` armazenado no estado da aplicação."""
     return request.app.state.predictor
+
+
+def get_retriever(request: Request):
+    """Retorna o ``FeatureStoreRetriever`` ou ``None`` se a base vetorial não existir."""
+    return getattr(request.app.state, "retriever", None)

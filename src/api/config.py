@@ -207,6 +207,7 @@ class Settings(BaseSettings):
     # Agente LLM (Gemini 2.5 Flash)
     google_api_key: str | None = None
     agent_max_message_chars: int = 8000
+    knowledge_base_path: str | None = None
 
     # Metadados da API
     api_title: str = "WeatherOps ML Serving API"

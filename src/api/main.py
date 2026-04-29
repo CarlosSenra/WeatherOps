@@ -98,6 +98,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.predictor = Predictor(registry, data_service)
     app.state.prediction_logger = prediction_logger
 
+    # ── 6. FeatureStoreRetriever (opcional — RAG do agente) ────────────────
+    app.state.retriever = None
+    if settings.google_api_key:
+        try:
+            import os
+            from src.api_agent.rag.retriever import FeatureStoreRetriever
+            if settings.knowledge_base_path:
+                os.environ.setdefault("KNOWLEDGE_BASE_PATH", settings.knowledge_base_path)
+            app.state.retriever = FeatureStoreRetriever.from_env(settings.google_api_key)
+            if app.state.retriever:
+                logger.info("FeatureStoreRetriever carregado — RAG ativo no agente.")
+            else:
+                logger.info(
+                    "FeatureStoreRetriever não disponível (base vetorial ausente). "
+                    "Execute o promote com --update-knowledge-base para ativar o RAG."
+                )
+        except ImportError:
+            logger.info("Dependências de RAG não instaladas; agente sem contexto histórico.")
+
     logger.info("Inicialização da API WeatherOps concluída.")
 
     yield
