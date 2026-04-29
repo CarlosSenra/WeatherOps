@@ -1,0 +1,218 @@
+{
+  "1": {
+    "temp_ar_c": {
+      "p5": 24.4,
+      "p95": 31.6
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 57.0,
+      "p95": 93.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1003.3,
+      "p95": 1009.8
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 0.2
+    }
+  },
+  "2": {
+    "temp_ar_c": {
+      "p5": 24.4,
+      "p95": 31.7
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 58.0,
+      "p95": 95.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1003.6,
+      "p95": 1010.0
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 0.6
+    }
+  },
+  "3": {
+    "temp_ar_c": {
+      "p5": 24.5,
+      "p95": 31.7
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 59.0,
+      "p95": 95.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1003.7,
+      "p95": 1009.3
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 0.4
+    }
+  },
+  "4": {
+    "temp_ar_c": {
+      "p5": 24.6,
+      "p95": 30.6
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 64.0,
+      "p95": 96.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1004.0,
+      "p95": 1009.1
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 3.4
+    }
+  },
+  "5": {
+    "temp_ar_c": {
+      "p5": 23.4,
+      "p95": 29.1
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 67.0,
+      "p95": 96.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1006.3,
+      "p95": 1012.3
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 2.6
+    }
+  },
+  "6": {
+    "temp_ar_c": {
+      "p5": 22.4,
+      "p95": 27.92
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 66.0,
+      "p95": 95.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1008.6,
+      "p95": 1014.4
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 1.4
+    }
+  },
+  "7": {
+    "temp_ar_c": {
+      "p5": 21.8,
+      "p95": 27.4
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 64.0,
+      "p95": 94.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1010.2,
+      "p95": 1016.1
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 1.0
+    }
+  },
+  "8": {
+    "temp_ar_c": {
+      "p5": 21.8,
+      "p95": 27.7
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 62.0,
+      "p95": 95.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1009.3,
+      "p95": 1015.8
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 1.0
+    }
+  },
+  "9": {
+    "temp_ar_c": {
+      "p5": 22.2,
+      "p95": 28.4
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 59.0,
+      "p95": 91.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1009.2,
+      "p95": 1015.12
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 0.2
+    }
+  },
+  "10": {
+    "temp_ar_c": {
+      "p5": 22.5,
+      "p95": 29.8
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 59.0,
+      "p95": 93.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1006.2,
+      "p95": 1013.6
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 0.2
+    }
+  },
+  "11": {
+    "temp_ar_c": {
+      "p5": 23.1,
+      "p95": 30.2
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 60.0,
+      "p95": 96.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1003.9,
+      "p95": 1010.5
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 1.2
+    }
+  },
+  "12": {
+    "temp_ar_c": {
+      "p5": 23.9,
+      "p95": 30.9
+    },
+    "umidade_rel_ar_percent": {
+      "p5": 58.0,
+      "p95": 89.0
+    },
+    "pressao_atm_estacao_mb": {
+      "p5": 1004.3,
+      "p95": 1009.1
+    },
+    "precipitacao_total_mm": {
+      "p5": 0.0,
+      "p95": 0.0
+    }
+  }
+}

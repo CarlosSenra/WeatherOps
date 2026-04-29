@@ -96,6 +96,47 @@ agent_chat_duration_seconds = Histogram(
 )
 
 
+# ---------------------------------------------------------------------------
+# Agente LLM — métricas granulares de tools, RAG e guardrails
+# ---------------------------------------------------------------------------
+
+agent_tool_calls_total = Counter(
+    "weatherops_agent_tool_calls_total",
+    "Invocações de tools individuais do agente",
+    labelnames=["tool_name"],
+)
+
+agent_tool_duration_seconds = Histogram(
+    "weatherops_agent_tool_duration_seconds",
+    "Latência de execução por tool do agente",
+    labelnames=["tool_name"],
+    buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0],
+)
+
+agent_rag_queries_total = Counter(
+    "weatherops_agent_rag_queries_total",
+    "Consultas RAG do agente por status",
+    labelnames=["status"],  # hit | miss | unavailable
+)
+
+agent_guardrail_blocks_total = Counter(
+    "weatherops_agent_guardrail_blocks_total",
+    "Bloqueios de guardrail por tipo de ameaça",
+    labelnames=["threat_type"],
+)
+
+agent_ragas_score = Gauge(
+    "weatherops_agent_ragas_score",
+    "Última pontuação RAGAS do agente por métrica",
+    labelnames=["metric_name"],  # faithfulness | answer_relevancy | context_precision | context_recall
+)
+
+query_semantic_drift_score = Gauge(
+    "weatherops_query_semantic_drift_score",
+    "Score de deriva semântica entre queries reais e golden set (0=idêntico, 1=máximo)",
+)
+
+
 def setup_metrics(app: FastAPI) -> None:
     """Instrumenta o app FastAPI e expõe o endpoint ``/metrics``."""
     Instrumentator(
