@@ -6,8 +6,9 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.api.config import get_settings
-from src.api.dependencies import get_data_service, get_predictor
-from src.api.metrics import agent_chat_duration_seconds, agent_chat_requests_total
+from src.api.dependencies import get_data_service, get_predictor, get_retriever
+from src.api.metrics import agent_chat_duration_seconds, agent_chat_requests_total, agent_guardrail_blocks_total
+from src.api_agent.guardrails import GuardResult, check_input
 from src.api.services.data_service import DataService
 from src.api.services.predictor import Predictor
 from src.api_agent.schemas import AgentChatRequest, AgentChatResponse
@@ -30,6 +31,7 @@ async def agent_chat(
     body: AgentChatRequest,
     predictor: Predictor = Depends(get_predictor),
     data_service: DataService = Depends(get_data_service),
+    retriever=Depends(get_retriever),
 ) -> AgentChatResponse:
     settings = get_settings()
 
@@ -45,9 +47,17 @@ async def agent_chat(
             ),
         )
 
+    guard: GuardResult = check_input(msg)
+    if not guard.passed:
+        agent_guardrail_blocks_total.labels(threat_type=guard.threat_type).inc()
+        raise HTTPException(
+            status_code=400,
+            detail={"detail": "Input blocked", "threat_type": guard.threat_type, "reason": guard.reason},
+        )
+
     t0 = time.perf_counter()
     try:
-        out = await run_agent_chat(msg, settings, predictor, data_service)
+        out = await run_agent_chat(msg, settings, predictor, data_service, retriever)
     except AgentRuntimeError as e:
         agent_chat_requests_total.labels(status="error").inc()
         raise HTTPException(status_code=400, detail=e.public_message) from e

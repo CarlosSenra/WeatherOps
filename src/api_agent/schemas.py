@@ -30,5 +30,8 @@ class AgentChatResponse(BaseModel):
     tool_calls: list[ToolCallRecord] = Field(default_factory=list)
     rag_context_snippets: list[str] = Field(
         default_factory=list,
-        description="Campo legado; mantido vazio no agente simplificado sem RAG.",
+        description=(
+            "Chunks de contexto histórico recuperados da base vetorial (RAG) "
+            "durante a execução do agente. Vazio quando a base não foi gerada."
+        ),
     )

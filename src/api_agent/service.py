@@ -1,18 +1,30 @@
 """Orquestração do agente WeatherOps via Gemini 2.5 Flash (LangChain function calling)."""
 from __future__ import annotations
 
+import logging
+import time
+
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+from src.api.metrics import (
+    agent_rag_queries_total,
+    agent_tool_calls_total,
+    agent_tool_duration_seconds,
+)
 from src.api.services.data_service import DataService
 from src.api.services.predictor import Predictor
+from src.api_agent.guardrails import check_output
 from src.api_agent.schemas import AgentChatResponse, ToolCallRecord
 from src.api_agent.tools import (
     list_available_models,
     make_dataset_window_tool,
     make_forecast_tool,
+    make_historical_context_tool,
     make_period_forecast_tool,
 )
+
+_logger = logging.getLogger(__name__)
 
 _MAX_ITERATIONS = 5
 
@@ -25,6 +37,8 @@ Regras para escolha de tool:
 - Use run_weather_forecast apenas quando o usuário especificar explicitamente um horizonte (72h, 168h ou 336h).
 - Use list_available_models para explicar opções disponíveis.
 - Use summarize_dataset_window para dúvidas sobre dados históricos observados.
+- Use get_historical_weather_context quando o usuário perguntar sobre o clima típico de um mês ou
+  período do ano, ou para enriquecer uma resposta de previsão com contexto histórico sazonal.
 
 Períodos do dia:
 - manhã: 07h–12h
@@ -47,6 +61,7 @@ async def run_agent_chat(
     settings: object,
     predictor: Predictor,
     data_service: DataService,
+    retriever=None,
 ) -> AgentChatResponse:
     api_key = getattr(settings, "google_api_key", None)
     if not api_key:
@@ -60,6 +75,9 @@ async def run_agent_chat(
         make_dataset_window_tool(data_service),
         list_available_models,
     ]
+    if retriever is not None:
+        tools.append(make_historical_context_tool(retriever))
+
     tool_map = {t.name: t for t in tools}
 
     llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key)
@@ -67,6 +85,7 @@ async def run_agent_chat(
 
     messages = [SystemMessage(content=_SYSTEM_PROMPT), HumanMessage(content=message)]
     tool_calls_made: list[ToolCallRecord] = []
+    rag_snippets: list[str] = []
 
     response = None
     for _ in range(_MAX_ITERATIONS):
@@ -86,6 +105,8 @@ async def run_agent_chat(
             tool_id = tc["id"]
 
             if tool_name not in tool_map:
+                if tool_name == "get_historical_weather_context":
+                    agent_rag_queries_total.labels(status="unavailable").inc()
                 messages.append(
                     ToolMessage(
                         content=f"Tool '{tool_name}' não encontrada.",
@@ -94,19 +115,41 @@ async def run_agent_chat(
                 )
                 continue
 
+            _t_tool = time.perf_counter()
             try:
                 result = await tool_map[tool_name].ainvoke(tool_args)
             except Exception as exc:
                 result = f'{{"error": "execucao_tool", "detail": "{exc}"}}'
+            finally:
+                agent_tool_calls_total.labels(tool_name=tool_name).inc()
+                agent_tool_duration_seconds.labels(tool_name=tool_name).observe(
+                    time.perf_counter() - _t_tool
+                )
 
             tool_calls_made.append(ToolCallRecord(name=tool_name, arguments=tool_args))
+            if tool_name == "get_historical_weather_context" and isinstance(result, str):
+                snippets = [s for s in result.split("\n\n") if s.strip()]
+                if snippets and "não disponível" not in result and "não encontrado" not in result:
+                    rag_snippets.extend(snippets)
+                    agent_rag_queries_total.labels(status="hit").inc()
+                else:
+                    agent_rag_queries_total.labels(status="miss").inc()
             messages.append(ToolMessage(content=str(result), tool_call_id=tool_id))
 
     if response is None:
         raise AgentRuntimeError("O agente não produziu resposta.")
 
+    if response.content:
+        out_guard = check_output(response.content)
+        if not out_guard.passed:
+            _logger.warning(
+                "Output guardrail triggered: threat=%s reason=%s",
+                out_guard.threat_type,
+                out_guard.reason,
+            )
+
     return AgentChatResponse(
         answer=response.content,
         tool_calls=tool_calls_made,
-        rag_context_snippets=[],
+        rag_context_snippets=rag_snippets,
     )
