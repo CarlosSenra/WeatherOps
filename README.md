@@ -1,366 +1,92 @@
 # WeatherOps
 
-Plataforma de engenharia de dados e machine learning para previsão meteorológica com foco em séries temporais, reprodutibilidade e rastreabilidade.
+Plataforma de engenharia de dados e machine learning para previsão meteorológica de séries temporais. Pipeline completo: ingestão de dados INMET → ETL com Airflow → treinamento de modelos (TFT, N-BEATS, LSTM, Transformer) → serving via API REST → monitoramento com Prometheus/Grafana e agente conversacional com Gemini 2.5 Flash.
 
 ---
 
-## Visão Geral
-
-O WeatherOps conecta cinco blocos principais em um pipeline ponta a ponta:
-
-1. **Engenharia de dados** em `core/` — limpeza e geração de features a partir de CSVs do INMET
-2. **Orquestração de pipelines** em `src/data_airflow/` — DAGs Airflow para automatizar o ETL
-3. **Treinamento e tracking** em `src/ml_workstation/` — quatro arquiteturas de deep learning com MLflow
-4. **Promoção de modelos** via MLflow Model Registry — governança e controle de versão de produção
-5. **Serving e monitoramento** em `src/api/` — API FastAPI com métricas Prometheus/Grafana e avaliação online de qualidade
-
----
-
-## Arquitetura Ponta a Ponta
+## Arquitetura
 
 ```mermaid
 flowchart LR
-    A[data/raw CSV] --> B[DataCleaning]
-    B --> C[WeatherFeatureEngineer]
-    C --> D[data/spec Parquet]
-    D --> E[Airflow DAGs]
-    E --> D
-    D --> F[train.py + JSON config]
-    F --> G[MLflow Tracking]
-    G --> H[evaluation HTML]
-    G --> I[run_promote.py]
-    I --> J[MLflow Registry\nalias production]
-    I --> K[src/api/ml_models]
-    J --> L[API FastAPI :8888]
-    K --> L
-    L --> M[POST /v1/forecast\n72 | 168 | 336h]
-    L --> N[Prometheus + Grafana\nmetricas operacionais]
-    M --> O[PredictionLogger + AccuracyEvaluator\nMAE RMSE MAPE]
-    O --> N
+    A[INMET CSV] --> B[Airflow ETL]
+    B --> C[data/spec Parquet]
+    C --> D[ML Workstation\nTFT · N-BEATS · LSTM]
+    D --> E[MLflow Registry]
+    E --> F[API FastAPI :8888]
+    F --> G[Prometheus · Grafana]
+    F --> H[Agente Gemini 2.5\n+ RAG ChromaDB]
 ```
 
 ---
 
-## Componentes
+## Início Rápido
 
-| Componente | Caminho | Responsabilidade | Docs |
-|------------|---------|-----------------|------|
-| **Core** | `core/` | Limpeza de dados e geração de features | [core/README.md](core/README.md) |
-| **Airflow** | `src/data_airflow/` | Orquestração do pipeline de dados | [src/data_airflow/README.md](src/data_airflow/README.md) |
-| **ML Workstation** | `src/ml_workstation/` | Treinamento, tracking, avaliação e promoção | [src/ml_workstation/README.md](src/ml_workstation/README.md) |
-| **API de Serving** | `src/api/` | Previsões horárias via REST, métricas e monitoramento online | [src/api/README.md](src/api/README.md) |
-| **Monitoramento** | `docs/MODEL_MONITORING.md` | Prometheus, Grafana, logging de previsões e métricas de qualidade do modelo | [docs/MODEL_MONITORING.md](docs/MODEL_MONITORING.md) |
-| **Documentação** | `docs/` | Setup, pipeline, monitoramento e troubleshooting | [docs/](docs/) |
+| Objetivo | Guia |
+|---|---|
+| Usar a API com modelos já prontos | [docs/guides/QUICKSTART.md](docs/guides/QUICKSTART.md) |
+| Usar o agente conversacional | [docs/guides/AGENT_QUICKSTART.md](docs/guides/AGENT_QUICKSTART.md) |
+| Rodar o pipeline do zero (dados → treino → API) | [docs/guides/END_TO_END_GUIDE.md](docs/guides/END_TO_END_GUIDE.md) |
 
 ---
 
-## Endpoints Locais
+## Serviços Locais
 
-Tabela de todos os serviços acessíveis via `localhost` ao rodar o projeto localmente.
-
-| Serviço | URL | Descrição | Credenciais |
+| Serviço | URL | Credenciais | Compose |
 |---|---|---|---|
-| WeatherOps API | `http://localhost:8888` | Serving de previsões meteorológicas | — |
-| API — Swagger UI | `http://localhost:8888/docs` | Documentação interativa dos endpoints | — |
-| API — ReDoc | `http://localhost:8888/redoc` | Documentação alternativa | — |
-| API — Métricas | `http://localhost:8888/metrics` | Métricas Prometheus (formato `text/plain`) | — |
-| API — Liveness | `http://localhost:8888/health` | Probe de liveness do container | — |
-| API — Readiness | `http://localhost:8888/health/ready` | Probe de readiness (modelos carregados) | — |
-| Prometheus | `http://localhost:9090` | Coleta e consulta de métricas via PromQL | — |
-| Grafana | `http://localhost:3000` | Dashboards de monitoramento | admin / admin |
-| MLflow UI (api compose) | `http://localhost:5001` | Tracking de experimentos (via `src/api/docker-compose.yml`) | — |
-| MLflow UI (workstation) | `http://localhost:5000` | Tracking de experimentos (via `src/ml_workstation/docker-compose.yml`) | — |
-| Airflow Webserver | `http://localhost:8080` | Orquestração de pipelines ETL | airflow / airflow |
+| API + Swagger | http://localhost:8888 · /docs | — | `src/api/docker-compose.yml` |
+| MLflow UI | http://localhost:5001 | — | `src/api/docker-compose.yml` |
+| Prometheus | http://localhost:9090 | — | `src/api/docker-compose.yml` |
+| Grafana | http://localhost:3000 | admin / admin | `src/api/docker-compose.yml` |
+| Airflow | http://localhost:8080 | airflow / airflow | `docker-compose-airflow.yaml` |
 
-> Prometheus e Grafana sobem automaticamente com `docker compose --profile api up` via `src/api/docker-compose.yml`.
-> O datasource do Prometheus é provisionado no Grafana sem configuração manual.
-
----
-
-## Pré-Requisitos
-
-| Ferramenta | Versão | Obrigatório |
-|------------|--------|------------|
-| Python | 3.12+ | Sim |
-| Poetry | 1.8+ | Sim |
-| Docker + Docker Compose V2 | 24+ | Sim |
-| Git | 2.40+ | Sim |
-| curl | qualquer | Recomendado (verificar API) |
-| NVIDIA Driver + nvidia-container-toolkit | — | Apenas para treino com GPU |
+> Todos os serviços da API (incluindo Prometheus e Grafana) sobem com um único comando:
+> `docker compose -f src/api/docker-compose.yml --profile api up -d`
 
 ---
 
 ## Estrutura do Repositório
 
-```text
-WeatherOps/
-├── core/                          # Módulo de engenharia de dados
-│   └── data_engineering/          # DataCleaning + WeatherFeatureEngineer
-├── data/
-│   ├── raw/                       # CSVs brutos do INMET (por ano)
-│   ├── staging/
-│   │   └── <municipio>/           # CSV limpo por município (ex: salvador/salvador.csv)
-│   └── spec/
-│       └── <municipio>/           # Parquet com features por município (ex: salvador/dados.parquet)
-├── notebooks/                     # Experimentos exploratórios
-├── src/
-│   ├── data_airflow/              # DAGs Airflow
-│   │   └── dags/
-│   ├── ml_workstation/            # Treinamento e promoção
-│   │   ├── config/
-│   │   ├── data/
-│   │   ├── evaluation/
-│   │   ├── experiments/           # JSONs de configuração
-│   │   ├── models/
-│   │   ├── promotion/
-│   │   ├── tracking/
-│   │   ├── training/
-│   │   └── train.py
-│   └── api/                       # API FastAPI de serving
-│       ├── engines/
-│       ├── routers/
-│       ├── schemas/
-│       ├── services/
-│       ├── main.py
-│       ├── config.py
-│       ├── Dockerfile
-│       └── docker-compose.yml
-├── test/                          # Testes unitários e de integração
-├── evaluation_results/            # HTMLs gerados pela avaliação
-├── pyproject.toml
-├── docker-compose-airflow.yaml
-└── data.dvc
-```
+| Caminho | Responsabilidade |
+|---|---|
+| `core/` | Limpeza de dados e geração de features |
+| `src/data_airflow/` | Orquestração ETL com Apache Airflow |
+| `src/ml_workstation/` | Treinamento, tracking (MLflow) e promoção de modelos |
+| `src/api/` | API FastAPI de serving com monitoramento |
+| `src/api_agent/` | Agente conversacional (Gemini + RAG) |
+| `data/raw/` | CSVs brutos do INMET (por ano) |
+| `data/spec/` | Parquet com features por município |
+| `scripts/` | Smoke tests e scripts de automação |
 
 ---
 
-## Stack Tecnológica
+## Pré-requisitos
 
-| Categoria | Tecnologias |
-|-----------|------------|
-| **Linguagem** | Python 3.12+ |
-| **Gerenciamento** | Poetry, DVC |
-| **Dados** | Pandas, Scikit-learn, PyArrow |
-| **Deep Learning** | PyTorch, pytorch-forecasting, PyTorch Lightning |
-| **Tracking** | MLflow |
-| **Visualização** | Plotly |
-| **API** | FastAPI, uvicorn, pydantic-settings |
-| **Cache** | In-memory (padrão) ou Redis |
-| **Observabilidade** | Prometheus, Grafana, prometheus-fastapi-instrumentator |
-| **Orquestração** | Apache Airflow (CeleryExecutor) |
-| **Containerização** | Docker Compose |
+| Ferramenta | Versão | Para quê |
+|---|---|---|
+| Docker + Docker Compose V2 | 24+ | Subir todos os serviços |
+| Python + Poetry | 3.12+ / 1.8+ | Desenvolvimento local e treino |
+| `GOOGLE_API_KEY` | — | Apenas para o agente conversacional |
 
 ---
 
-## Mapa de Documentação
-
-| Documento | Conteúdo |
-|-----------|---------|
-| [core/README.md](core/README.md) | Módulo de engenharia de dados |
-| [core/ARCHITECTURE.md](core/ARCHITECTURE.md) | Arquitetura e acoplamentos do core |
-| [core/data_engineering/README.md](core/data_engineering/README.md) | DataCleaning, WeatherFeatureEngineer, schema de saída |
-| [src/data_airflow/README.md](src/data_airflow/README.md) | Setup e uso do Airflow |
-| [src/ml_workstation/README.md](src/ml_workstation/README.md) | Treinamento, tracking, avaliação e promoção |
-| [src/ml_workstation/ARCHITECTURE.md](src/ml_workstation/ARCHITECTURE.md) | Arquitetura de 5 camadas do ML Workstation |
-| [src/ml_workstation/evaluation/README.md](src/ml_workstation/evaluation/README.md) | Avaliação visual de runs |
-| [src/ml_workstation/promotion/PROMOTION.md](src/ml_workstation/promotion/PROMOTION.md) | Promoção de modelos para o Registry |
-| [src/api/README.md](src/api/README.md) | API de serving: endpoints, variáveis e como usar |
-| [src/api/ARCHITECTURE.md](src/api/ARCHITECTURE.md) | Arquitetura técnica da API (engines, cache, tracing) |
-
----
-
-## Fluxo de Trabalho Completo
-
-Sequência para ir do zero até a API servindo previsões:
-
-1. **Popular dados brutos** — via DAG `inmet_download_raw` (anos em `src/data_airflow/config/inmet_scraping.yml`) ou colocando CSVs manualmente em `data/raw/`
-2. **Executar limpeza** — via Airflow DAG `data_cleaning` ou diretamente com `DataCleaning`
-3. **Executar feature engineering** — via Airflow DAG `data_feature_engineering` ou `WeatherFeatureEngineer`
-4. **Treinar modelo** — `docker compose --profile train run --rm trainer --config //app/experiments/tft/tft_h72_v1.json`
-5. **Avaliar run** — `poetry run python -m src.ml_workstation.evaluation.run_evaluation --run-id <RUN_ID>`
-6. **Promover modelo** — `poetry run python -m src.ml_workstation.promotion.run_promote --experiment-name weather_forecasting_h72 --export-dir src/api/ml_models`
-7. **Subir API** — `docker compose -f src/api/docker-compose.yml --profile api up --build`
-8. **Monitorar serving e qualidade** — acompanhar `/metrics`, Prometheus, Grafana e os gauges `weatherops_model_*`
-
----
-
-## Setup Rápido
-
-Instalação local:
+## Testes
 
 ```bash
-poetry install
-```
-
-Testes:
-
-```bash
-poetry run pytest
+poetry install --with dev
 poetry run pytest --cov=core --cov=src --cov-report=term-missing
 ```
 
-Execucao guiada com user pipeline (Windows + Linux/macOS):
-
-```bash
-# PowerShell (Windows)
-./scripts/run_pipeline.ps1 -Mode bootstrap -Device auto -StartYear 2024 -EndYear 2026
-
-# Bash (Linux/macOS)
-./scripts/run_pipeline.sh --mode bootstrap --device auto --start-year 2024 --end-year 2026
-```
-
-Modos:
-- `bootstrap`: exige modelos exportados já versionados em `src/api/ml_models`.
-- `train`: roda treino + promote/export antes de subir API.
-- `full`: tenta bootstrap e pode seguir com treino quando necessário.
-
-Observação: o pipeline de dados local é obrigatório (`inmet_download_raw` -> `data_cleaning` -> `data_feature_engineering`) para gerar `data/spec`.
+Cobertura mínima exigida no CI: **60%**.
 
 ---
 
-## Airflow
+## Documentação Técnica
 
-```bash
-# Inicialização (apenas na primeira vez)
-docker compose -f docker-compose-airflow.yaml up airflow-init
-
-# Subir stack
-docker compose -f docker-compose-airflow.yaml up -d
-```
-
-Acesso: `http://localhost:8080` (usuário: `airflow`, senha: `airflow`)
-
-Executar ingestão INMET por intervalo de anos:
-
-1. Ajustar `start_year` e `end_year` em `src/data_airflow/config/inmet_scraping.yml`
-2. (Opcional) Ajustar filtros de municípios em `src/data_airflow/config/municipios.yml` (`include`, `exclude`, `slug_overrides`)
-3. Rodar DAG `inmet_download_raw` no Airflow UI
-4. Rodar `data_cleaning` e depois `data_feature_engineering`
-
----
-
-## Treinamento
-
-Treino via Docker (CPU):
-
-```bash
-cd src/ml_workstation
-docker compose --profile train build trainer
-docker compose --profile train run --rm trainer --config //app/experiments/lstm/lstm_h72_v1.json
-```
-
-Treino via Docker (GPU):
-
-```bash
-docker compose --profile train-gpu run --rm trainer-gpu --config //app/experiments/tft/tft_h72_v1.json
-```
-
-Treino local via Poetry:
-
-```bash
-poetry run python -m src.ml_workstation.train --config src/ml_workstation/experiments/lstm/lstm_h72_v1.json
-```
-
-> **Windows + Git Bash:** use `//app/...` (dupla barra) para caminhos de arquivos dentro do container.
->
-> **Rebuild necessário** se o `pyproject.toml` for alterado.
-
----
-
-## MLflow
-
-Subir UI local:
-
-```bash
-cd src/ml_workstation
-docker compose --profile ui up -d mlflow-ui
-```
-
-Acesso: `http://localhost:5000`
-
----
-
-## Avaliação de Runs
-
-```bash
-poetry run python -m src.ml_workstation.evaluation.run_evaluation --run-id <RUN_ID>
-```
-
-Saída: HTML em `evaluation_results/` com gráfico Real vs Predito.
-
-Suporta LSTM e Transformer. Para TFT/N-BEATS, as métricas estão no MLflow UI.
-
----
-
-## Promoção de Modelos
-
-O MLflow Model Registry é a fonte de verdade para modelos em produção. Cada modelo promovido recebe o alias `production` e é validado contra regressão de MAPE.
-
-```bash
-# Promover o melhor run por MAPE e exportar para a API
-# (o caminho relativo é resolvido pela raiz do repositório)
-poetry run python -m src.ml_workstation.promotion.run_promote \
-  --experiment-name weather_forecasting_h72 \
-  --export-dir src/api/ml_models
-```
-
-Use `--force` para sobrescrever a proteção contra regressão de MAPE.
-Use `--no-strict-export` apenas se quiser manter a promoção no Registry mesmo com falha na exportação local.
-
-Estrutura esperada em `src/api/ml_models/<model_name>/`:
-- `MLmodel`
-- `data/`
-- `manifest.json`
-
-Detalhes: [src/ml_workstation/promotion/PROMOTION.md](src/ml_workstation/promotion/PROMOTION.md)
-
----
-
-## API de Serving
-
-```bash
-# A partir da raiz do repositório
-docker compose -f src/api/docker-compose.yml --profile api up --build
-```
-
-Verificar prontidão (aguardar ~30s para carregamento dos modelos):
-
-```bash
-curl http://localhost:8888/health/ready
-```
-
-Forecast de 72 horas:
-
-```bash
-curl -X POST http://localhost:8888/v1/forecast/72 \
-  -H "Content-Type: application/json" \
-  -d '{"reference_date": "2024-06-01", "model_type": "tft", "group_id": "station_1"}'
-```
-
-Documentação interativa: `http://localhost:8888/docs`
-
-Horizontes disponíveis: `72`, `168`, `336` horas.
-
-Monitoramento local:
-
-- Métricas Prometheus: `http://localhost:8888/metrics`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3000` (`admin` / `admin`)
-- Guia detalhado: [docs/MODEL_MONITORING.md](docs/MODEL_MONITORING.md)
-
----
-
-## Qualidade e Governança
-
-- Cobertura de testes mínima: **60%** (verificada no CI/CD)
-- Configs de experimento versionadas em `src/ml_workstation/experiments/`
-- Metadados de governança registrados no MLflow (owner, git_sha, data_version, risk_level)
-- Monitoramento online de qualidade por MAE/RMSE/MAPE em `weatherops_model_*`
-- Pipeline de CI no GitHub Actions: `push` e `PR` no branch `develop` executam os testes com cobertura
-- Dados versionados com DVC (`data.dvc`)
-
----
-
-## Licença
-
-Este projeto está licenciado conforme `LICENSE`.
+| Componente | Referência |
+|---|---|
+| Engenharia de dados | [core/data_engineering/README.md](core/data_engineering/README.md) · [core/ARCHITECTURE.md](core/ARCHITECTURE.md) |
+| Airflow | [src/data_airflow/README.md](src/data_airflow/README.md) |
+| ML Workstation | [src/ml_workstation/README.md](src/ml_workstation/README.md) · [PROMOTION.md](src/ml_workstation/promotion/PROMOTION.md) |
+| API | [src/api/README.md](src/api/README.md) · [src/api/ARCHITECTURE.md](src/api/ARCHITECTURE.md) |
+| Agente | [src/api_agent/README.md](src/api_agent/README.md) |
+| Segurança / LGPD | [docs/security/](docs/security/) |

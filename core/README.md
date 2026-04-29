@@ -1,10 +1,10 @@
 # Core
 
-Modulo de engenharia de dados do WeatherOps.
+Módulo de engenharia de dados do WeatherOps.
 
 ## Objetivo
 
-Transformar dados meteorologicos brutos em dados confiaveis e model-ready para consumo no treinamento.
+Transformar dados meteorológicos brutos em dados confiáveis e prontos para treinamento.
 
 ## Estrutura
 
@@ -15,49 +15,28 @@ core/
 │   │   └── data_cleaning.py
 │   ├── data_feature_eng/
 │   │   └── feature_eng.py
-│   ├── interface/
-│   │   └── i_data_eng.py
-│   └── models/
-├── data_analynitcs/
-│   ├── graphs_maker/
-│   ├── inputs/
 │   └── interface/
-└── __init__.py
+│       └── i_data_eng.py
+└── data_analynitcs/       # utilitários de gráficos exploratórios (não produção)
 ```
 
-Nota: o nome `data_analynitcs` esta mantido por compatibilidade atual do repositorio.
+## Fluxo
 
-## Fluxo de Engenharia de Dados
-
-```mermaid
-flowchart TD
-    A[data/raw CSV] --> B[data_cleaning]
-    B --> C[data_feature_eng]
-    C --> D[data/spec Parquet]
-    D --> E[src/ml_workstation treino]
-    E --> F[src/api serving]
+```
+data/raw/ CSV → DataCleaning → WeatherFeatureEngineer → data/spec/ Parquet → ml_workstation
 ```
 
-## Componentes Principais
+## Componentes
 
-- `data_cleaning`: padronizacao de schema, tratamento de nulos e consistencia de valores.
-- `data_feature_eng`: criacao de variaveis de tempo, lags e agregacoes.
-- `interface/i_data_eng.py`: contrato para pipelines de engenharia de dados.
+- `data_cleaning` — padronização de schema, tratamento de nulos e consistência de valores
+- `data_feature_eng` — criação de variáveis de tempo, lags e agregações
+- `interface/i_data_eng.py` — contrato para pipelines de engenharia de dados
 
-Documentacao detalhada com exemplos de uso, configuracoes e schema de saida: [data_engineering/README.md](data_engineering/README.md).
-
-Nota: o diretorio `data_analynitcs/` (grafia mantida por compatibilidade) contem utilitarios de graficos exploratórios e nao faz parte do pipeline principal de producao.
-
-## Boas Praticas
-
-1. Preservar determinismo no pipeline para reproducibilidade.
-2. Versionar alteracoes de schema com impacto em treino.
-3. Validar colunas finais antes de publicar em `data/spec`.
-4. Cobrir transformacoes criticas com testes unitarios.
+Documentação detalhada com exemplos, configurações e schema de saída: [data_engineering/README.md](data_engineering/README.md)
 
 ## Testes
 
-Testes de core estao organizados em:
-
-- `test/unit/core/data_engineering/data_cleaning`
-- `test/unit/core/data_engineering/data_feature_eng`
+```
+test/unit/core/data_engineering/data_cleaning
+test/unit/core/data_engineering/data_feature_eng
+```
