@@ -231,6 +231,8 @@ usage: python -m src.ml_workstation.promotion.run_promote
        [--force]
        [--export-dir DIR]
        [--strict-export | --no-strict-export]
+       [--update-knowledge-base]
+       [--knowledge-base-path DIR]
 ```
 
 ### Exemplos
@@ -253,6 +255,12 @@ poetry run python -m src.ml_workstation.promotion.run_promote \
     --run-id abc123def456 \
     --force \
     --export-dir src/api/ml_models
+
+# Promove + exporta + atualiza base vetorial do agente (RAG)
+poetry run python -m src.ml_workstation.promotion.run_promote \
+    --experiment-name weather_tft_h72 \
+    --export-dir src/api/ml_models \
+    --update-knowledge-base
 ```
 
 ### Códigos de saída
@@ -262,6 +270,80 @@ poetry run python -m src.ml_workstation.promotion.run_promote \
 | `0` | Promoção realizada com sucesso |
 | `1` | Promoção rejeitada (`PromotionRejectedError`) |
 | `2` | Erro inesperado |
+
+---
+
+## Atualizar a Base Vetorial do Agente (RAG)
+
+O flag `--update-knowledge-base` ativa a geração automática do **feature store** e da
+**base vetorial ChromaDB** usada pelo agente conversacional para responder perguntas
+sobre padrões históricos de clima.
+
+### O que acontece
+
+```
+promote --update-knowledge-base
+    │
+    ├─ 1. Feature store snapshot
+    │       Lê o Parquet de serving exportado em serving_data/
+    │       → detecta o município pelo diretório pai do source_file
+    │       → calcula perfis mensais (média, min, max, std) e percentis (p5/p95)
+    │       → salva em <model_dir>/feature_store/
+    │           ├── metadata.json
+    │           ├── monthly_profiles.json
+    │           └── seasonal_extremes.json
+    │
+    └─ 2. Rebuild do ChromaDB
+            Converte os JSONs em chunks de texto em PT-BR
+            → embeda com Google Embedding (models/embedding-001)
+            → persiste em src/api_agent/knowledge/chroma_db/
+            (idempotente: remove documentos do município antes de reinserir)
+```
+
+### Pré-requisitos
+
+- `--export-dir` deve estar definido e o promote deve ter gerado `serving_data/`
+- `GOOGLE_API_KEY` disponível no ambiente
+- Dependências do grupo `agent` instaladas: `poetry install --only agent`
+
+### Flags
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `--update-knowledge-base` | `False` | Ativa a geração do feature store + rebuild do ChromaDB |
+| `--knowledge-base-path DIR` | `src/api_agent/knowledge/chroma_db` | Diretório de persistência do ChromaDB. Também lido de `KNOWLEDGE_BASE_PATH` |
+
+### Exemplo completo
+
+```bash
+GOOGLE_API_KEY=AIza... \
+poetry run python -m src.ml_workstation.promotion.run_promote \
+    --experiment-name weather_tft_h72 \
+    --export-dir src/api/ml_models \
+    --update-knowledge-base
+
+# Saída esperada:
+# Melhor run promovido com sucesso.
+#   Experimento : weather_tft_h72
+#   Métrica     : mape
+#   Versão      : 4
+# Base vetorial atualizada: 13 chunks em .../src/api_agent/knowledge/chroma_db
+```
+
+### Reiniciar a API
+
+Após gerar o ChromaDB, reinicie a API para que o `FeatureStoreRetriever` seja carregado:
+
+```bash
+# Log esperado no startup:
+# INFO  src.api.main — FeatureStoreRetriever carregado — RAG ativo no agente.
+```
+
+### Graceful degradation
+
+- Se `GOOGLE_API_KEY` não estiver definida: o flag é ignorado com aviso no log
+- Se `serving_data/` não existir no modelo exportado: base vetorial não é gerada (aviso no log)
+- Se o ChromaDB não existir quando a API sobe: o agente funciona normalmente, sem a tool `get_historical_weather_context`
 
 ---
 

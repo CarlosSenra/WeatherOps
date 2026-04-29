@@ -1,4 +1,5 @@
 mode: all
-include: []
+include:
+  - salvador
 exclude: []
 slug_overrides: {}
