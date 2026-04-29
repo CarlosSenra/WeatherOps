@@ -92,6 +92,27 @@ def _build_parser() -> argparse.ArgumentParser:
             "Use --no-strict-export para manter comportamento permissivo."
         ),
     )
+    parser.add_argument(
+        "--update-knowledge-base",
+        action="store_true",
+        default=False,
+        help=(
+            "Após exportar, reconstrói a base vetorial ChromaDB do agente com perfis "
+            "históricos do município detectado no serving_data. "
+            "Requer GOOGLE_API_KEY no ambiente e --export-dir definido."
+        ),
+    )
+    parser.add_argument(
+        "--knowledge-base-path",
+        type=str,
+        default=None,
+        metavar="DIR",
+        help=(
+            "Diretório de persistência do ChromaDB. "
+            "Predefinição: variável de ambiente KNOWLEDGE_BASE_PATH ou "
+            "src/api_agent/knowledge/chroma_db relativo ao repositório."
+        ),
+    )
     return parser
 
 
@@ -105,6 +126,44 @@ def _resolve_export_dir(export_dir: str | None) -> str | None:
     if _WINDOWS_ABS_PATH_RE.match(raw_path) or _WINDOWS_UNC_PATH_RE.match(raw_path):
         return os.path.normpath(raw_path)
     return str((workspace_root() / export_path).resolve())
+
+
+def _resolve_knowledge_base_path(kb_path_arg: str | None) -> Path:
+    raw = kb_path_arg or os.environ.get("KNOWLEDGE_BASE_PATH", "")
+    if raw:
+        p = Path(raw.strip())
+        return p.resolve() if p.is_absolute() else (workspace_root() / p).resolve()
+    return (workspace_root() / "src" / "api_agent" / "knowledge" / "chroma_db").resolve()
+
+
+def _update_knowledge_base(export_dir: str, model_name: str, kb_path: Path) -> None:
+    google_api_key = os.environ.get("GOOGLE_API_KEY", "")
+    if not google_api_key:
+        logger.warning(
+            "--update-knowledge-base ignorado: GOOGLE_API_KEY não definida no ambiente."
+        )
+        return
+
+    feature_store_dir = Path(export_dir) / model_name / "feature_store"
+    if not feature_store_dir.is_dir():
+        logger.warning(
+            "--update-knowledge-base: feature_store não encontrado em %s. "
+            "Verifique se o export gerou serving_data.",
+            feature_store_dir,
+        )
+        return
+
+    try:
+        from src.api_agent.rag.knowledge_builder import build_knowledge_base
+        n = build_knowledge_base(
+            feature_store_dir=feature_store_dir,
+            chroma_path=kb_path,
+            google_api_key=google_api_key,
+        )
+        print(f"Base vetorial atualizada: {n} chunks em {kb_path}")
+    except Exception as exc:
+        logger.error("Falha ao atualizar base vetorial: %s", exc, exc_info=True)
+        print(f"AVISO: base vetorial não atualizada — {exc}", file=sys.stderr)
 
 
 def main() -> None:
@@ -159,6 +218,11 @@ def main() -> None:
         logger.error("Falha na promoção: %s", exc, exc_info=True)
         print(f"ERRO inesperado: {exc}", file=sys.stderr)
         sys.exit(2)
+
+    if args.update_knowledge_base and export_dir:
+        effective_model_name = args.model_name or args.experiment_name
+        kb_path = _resolve_knowledge_base_path(getattr(args, "knowledge_base_path", None))
+        _update_knowledge_base(export_dir, effective_model_name, kb_path)
 
 
 if __name__ == "__main__":

@@ -344,6 +344,7 @@ def export_promoted_model_to_disk(
         shutil.move(str(staging), str(dest))
 
     _validate_exported_layout(dest)
+    _maybe_snapshot_features(dest)
 
     logger.info(
         "Modelo exportado para %s (versão Registry=%s, run_id=%s)",
@@ -352,6 +353,35 @@ def export_promoted_model_to_disk(
         run_id,
     )
     return dest
+
+
+def _maybe_snapshot_features(model_dir: Path) -> None:
+    """Gera o feature store snapshot a partir do serving_data exportado, se disponível."""
+    serving_dir = model_dir / SERVING_DATA_DIRNAME
+    metadata_file = serving_dir / SERVING_DATA_METADATA_NAME
+    if not metadata_file.is_file():
+        return
+
+    try:
+        with metadata_file.open(encoding="utf-8") as f:
+            serving_meta = json.load(f)
+    except Exception as exc:
+        logger.warning("Feature store: falha ao ler serving_data_metadata.json: %s", exc)
+        return
+
+    parquet_files = list(serving_dir.glob("*.parquet"))
+    if not parquet_files:
+        return
+
+    parquet_path = max(parquet_files, key=lambda p: p.stat().st_size)
+    source_file = serving_meta.get("source_file", "")
+    municipio = Path(source_file).parent.name if source_file else parquet_path.parent.parent.name
+
+    try:
+        from src.ml_workstation.promotion.feature_store import snapshot_features
+        snapshot_features(parquet_path=parquet_path, export_dir=model_dir, municipio=municipio or "desconhecido")
+    except Exception as exc:
+        logger.warning("Feature store snapshot falhou (não bloqueia export): %s", exc)
 
 
 def read_export_manifest(local_model_dir: Path) -> dict[str, Any] | None:
