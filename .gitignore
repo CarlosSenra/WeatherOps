@@ -238,4 +238,4 @@ src/api/ml_models/
 lightning_logs/
 
 # ChromaDB — artefato gerado pelo promote
-src/api_agent/knowledge/chroma_db/
+src/api_agent/knowledge/
