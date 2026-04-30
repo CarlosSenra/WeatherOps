@@ -26,7 +26,9 @@ jobs:
           version: latest
 
       - name: Install dependencies (dev + agent)
-        run: poetry install 
+        run: |
+          poetry config repositories.pytorch-cpu https://download.pytorch.org/whl/cpu
+          poetry install --with dev
 
       - name: Run coverage tests
         run: poetry run pytest --cov=core --cov=src --cov-report=term-missing --cov-fail-under=60
