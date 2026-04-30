@@ -20,7 +20,7 @@ dependencies = [
     "fastapi (>=0.115.0,<1.0.0)",
     "uvicorn[standard] (>=0.34.0,<1.0.0)",
     "prometheus-fastapi-instrumentator (>=7.0.0,<8.0.0)",
-    "pytorch-forecasting (>=1.1.0,<2.0.0)",
+    "pytorch-forecasting = {git = "https://github.com/jdb78/pytorch-forecasting.git", tag = "v1.7.0"},
     "pytorch-lightning (>=2.4.0,<3.0.0)"
 ]
 
@@ -61,7 +61,7 @@ torch = {version = ">=2.3.0,<3.0.0", source = "pytorch-cpu"}
 mlflow = ">=3.0.0,<4.0.0"
 scikit-learn = ">=1.5.0,<2.0.0"
 joblib = ">=1.4.0,<2.0.0"
-pytorch-forecasting = ">=1.1.0,<2.0.0"
+pytorch-forecasting = {git = "https://github.com/jdb78/pytorch-forecasting.git", tag = "v1.7.0"}
 pytorch-lightning = ">=2.4.0,<3.0.0"
 prometheus-fastapi-instrumentator = ">=7.0.0,<8.0.0"
 
