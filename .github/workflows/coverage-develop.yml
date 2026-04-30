@@ -28,6 +28,7 @@ jobs:
       - name: Install dependencies (dev + agent)
         run: |
           poetry config repositories.pytorch-cpu https://download.pytorch.org/whl/cpu
+          poetry lock --no-update
           poetry install --with dev --no-root
 
       - name: Run coverage tests
