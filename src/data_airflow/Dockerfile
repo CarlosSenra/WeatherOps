@@ -22,4 +22,5 @@ COPY --chown=airflow:root pyproject.toml poetry.lock* /opt/project/
 COPY --chown=airflow:root core/ /opt/project/core/
 COPY --chown=airflow:root src/ /opt/project/src/
 
-RUN poetry install --no-interaction --no-ansi --only main
+RUN poetry install --no-interaction --no-ansi --only main --without api,agent && \
+    pip install --no-cache-dir "apache-airflow==2.11.2" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.11.2/constraints-3.12.txt"
