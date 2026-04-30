@@ -128,7 +128,7 @@ O repositório já inclui o feature store do município. Para popular o ChromaDB
 dele basta um comando:
 
 ```bash
-poetry run python scripts/update_kb.py
+GOOGLE_API_KEY=<SUA_API_KEY> poetry run python scripts/update_kb.py
 ```
 
 Saída esperada:
@@ -210,6 +210,58 @@ O script `scripts/smoke_api.py` inclui testes de agente. Para executar com o age
 WEATHEROPS_API_BASE_URL=http://localhost:8888 \
 SMOKE_SKIP_AGENT=false \
 poetry run python scripts/smoke_api.py
+```
+
+---
+
+## 9. Avaliação de Qualidade
+
+### 9a. RAGAS — qualidade do agente
+
+Avalia o agente contra o golden set e publica os scores no Grafana:
+
+```bash
+GOOGLE_API_KEY=sua_chave \
+  poetry run python scripts/run_ragas_eval.py \
+    --limit 5 \
+    --update-prometheus
+```
+
+Métricas calculadas: `faithfulness`, `answer_relevancy`, `context_precision`, `context_recall`.
+
+Resultados salvos em `evaluation_results/ragas_results_<timestamp>.json`.
+
+Após rodar, verifique o painel **RAGAS Scores** no Grafana
+
+### 9b. Drift semântico
+
+Mede se as queries reais estão se afastando do golden set de referência e publica no Grafana:
+
+```bash
+GOOGLE_API_KEY=sua_chave \
+  poetry run python scripts/check_query_drift.py \
+    --semantic \
+    --update-prometheus
+```
+
+Após rodar, verifique o painel **Drift Semântico de Queries** no Grafana
+
+### 9c. Popular painéis manualmente (sem rodar scripts)
+
+Útil para demonstrar os painéis sem aguardar a avaliação completa:
+
+```bash
+# RAGAS scores
+curl -s -X POST http://localhost:8888/v1/internal/ragas \
+  -H "Content-Type: application/json" \
+  -d '{"scores": {"faithfulness": 0.85, "answer_relevancy": 0.91, "context_precision": 0.78, "context_recall": 0.82}}' \
+  | python -m json.tool
+
+# Drift semântico
+curl -s -X POST http://localhost:8888/v1/internal/drift \
+  -H "Content-Type: application/json" \
+  -d '{"score": 0.08}' \
+  | python -m json.tool
 ```
 
 ---

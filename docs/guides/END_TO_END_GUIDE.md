@@ -92,7 +92,25 @@ start_year: 2024
 end_year: 2026
 ```
 
-Ative e execute a DAG `inmet_download_raw` pela UI ou via CLI:
+‼️**IMPORTANTE**: Ative as dags em `http://localhost:8080`, se quiser fazer os passos manualemnte pule o script automatico abaixo.
+
+---
+
+> **Alternativa (script automático) se quiser adiantar as coisas:** Os scripts abaixo orquestram Airflow +
+> engenharia de dados de uma vez sobe a API:
+> ```bash
+> # Windows (PowerShell)
+> ./scripts/run_pipeline.ps1 -Mode bootstrap -Device auto -StartYear 2024 -EndYear 2026
+>
+> # Linux/macOS/Git Bash
+> ./scripts/run_pipeline.sh --mode bootstrap --device auto --start-year 2024 --end-year 2026
+> ```
+
+OBS: a API irá ser deployada com modelos que já estão promovidos na pasta da API. Pule para o Passo 7 do uso do Agente na API ou siga [docs/guides/AGENT_QUICKSTART.md](docs/guides/AGENT_QUICKSTART.md) para configurar o Knowledge Base e saber usar RAG e o monitoramento do modelo.
+
+---
+
+Execute a DAG `inmet_download_raw` pela UI ou via CLI:
 
 ```bash
 docker compose -f docker-compose-airflow.yaml exec airflow-webserver \
@@ -100,17 +118,6 @@ docker compose -f docker-compose-airflow.yaml exec airflow-webserver \
 ```
 
 Resultado esperado: arquivos CSV em `data/raw/2024/`, `data/raw/2025/`, etc.
-
-> **Alternativa (script automático):** Os scripts abaixo orquestram Airflow +
-> engenharia de dados de uma vez:
-> ```bash
-> # Windows (PowerShell)
-> ./scripts/run_pipeline.ps1 -Mode bootstrap -Device auto -StartYear 2024 -EndYear 2026
->
-> # Linux/macOS
-> ./scripts/run_pipeline.sh --mode bootstrap --device auto --start-year 2024 --end-year 2026
-> ```
-
 ---
 
 ## Passo 3 — Engenharia de dados

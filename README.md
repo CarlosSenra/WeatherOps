@@ -27,6 +27,8 @@ flowchart LR
 | Usar o agente conversacional | [docs/guides/AGENT_QUICKSTART.md](docs/guides/AGENT_QUICKSTART.md) |
 | Rodar o pipeline do zero (dados → treino → API) | [docs/guides/END_TO_END_GUIDE.md](docs/guides/END_TO_END_GUIDE.md) |
 
+‼️**OBS : O pipeline está pronto somente para o uso do modelo TFT. **‼️
+
 ---
 
 ## Serviços Locais
