@@ -2,4 +2,4 @@ metric,score
 faithfulness,0.7333
 answer_relevancy,0.8419
 context_precision,0.7000
-context_recall,0.7000
+context_recall,0.6000

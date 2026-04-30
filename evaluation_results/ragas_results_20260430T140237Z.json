@@ -1,10 +1,10 @@
 {
-  "timestamp": "20260429T225117Z",
+  "timestamp": "20260430T140237Z",
   "n_examples": 5,
   "scores": {
     "faithfulness": 0.7333333333333333,
     "answer_relevancy": 0.8418768119792563,
     "context_precision": 0.69999999993,
-    "context_recall": 0.7
+    "context_recall": 0.6
   }
 }

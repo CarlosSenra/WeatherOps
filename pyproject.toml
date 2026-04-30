@@ -5,7 +5,7 @@ description = ""
 authors = [
     {name = "Carlos Rafael Senra Brito"}
 ]
-requires-python = ">=3.12,<3.15"
+requires-python = ">=3.10,<3.14"
 dependencies = [
     "dvc (>=3.67.0,<4.0.0)",
     "pandas (>=2.2.0,<3.0.0)",
@@ -21,7 +21,7 @@ dependencies = [
     "uvicorn[standard] (>=0.34.0,<1.0.0)",
     "prometheus-fastapi-instrumentator (>=7.0.0,<8.0.0)",
     "pytorch-forecasting (>=1.1.0,<2.0.0)",
-    "lightning (>=2.4.0,<3.0.0)"
+    "lightning @ git+https://github.com/Lightning-AI/lightning.git@2.6.1"
 ]
 
 
@@ -61,8 +61,8 @@ torch = {version = ">=2.3.0,<3.0.0", source = "pytorch-cpu"}
 mlflow = ">=3.0.0,<4.0.0"
 scikit-learn = ">=1.5.0,<2.0.0"
 joblib = ">=1.4.0,<2.0.0"
-pytorch-forecasting = ">=1.1.0,<2.0.0"
-lightning = ">=2.4.0,<3.0.0"
+pytorch-forecasting = {git = "https://github.com/jdb78/pytorch-forecasting.git", tag = "v1.7.0"}
+lightning = {git = "https://github.com/Lightning-AI/lightning.git", tag = "2.6.1"}
 prometheus-fastapi-instrumentator = ">=7.0.0,<8.0.0"
 
 # Dependências auxiliares de avaliação do agente
