@@ -218,7 +218,15 @@ Referência completa: [src/ml_workstation/README.md](../src/ml_workstation/READM
 
 ```bash
 cd src/ml_workstation
+```
 
+**Acompanhar o treinamento no MLflow:**
+
+```bash
+docker compose --profile ui up -d mlflow-ui
+```
+
+```bash
 # CPU
 docker compose --profile train run --rm trainer \
   --config //app/experiments/tft/tft_h72_v1.json
@@ -228,19 +236,8 @@ docker compose --profile train-gpu run --rm trainer-gpu \
   --config //app/experiments/tft/tft_h72_v1.json
 ```
 
-**Via Poetry (sem Docker):**
+Para mais detalhes olhe em [src/ml_workstation/README.md](src/ml_workstation/README.md).
 
-```bash
-poetry run python -m src.ml_workstation.train \
-  --config src/ml_workstation/experiments/tft/tft_h72_v1.json
-```
-
-**Acompanhar o treinamento no MLflow:**
-
-```bash
-cd src/ml_workstation
-docker compose --profile ui up -d mlflow-ui
-```
 
 Acesse `http://localhost:5000` para ver métricas por época, parâmetros e artefatos.
 
@@ -255,7 +252,7 @@ O treinamento salva automaticamente:
 ## Passo 6 — Promover o modelo para produção
 
 A promoção registra o melhor run do experimento no **MLflow Model Registry** com
-o alias `production` e, opcionalmente, exporta o artefato para disco.
+o alias `production` e, opcionalmente, exporta o artefato para disco (Recomendado exportar artefatos e atualizar o Knowledge base para usar RAG).
 
 **Promover o melhor run automaticamente (menor MAPE):**
 
