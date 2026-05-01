@@ -44,23 +44,6 @@ flowchart LR
 > Todos os serviços da API (incluindo Prometheus e Grafana) sobem com um único comando:
 > `docker compose -f src/api/docker-compose.yml --profile api up -d`
 
----
-
-## Estrutura do Repositório
-
-| Caminho | Responsabilidade |
-|---|---|
-| `core/` | Limpeza de dados e geração de features |
-| `src/data_airflow/` | Orquestração ETL com Apache Airflow |
-| `src/ml_workstation/` | Treinamento, tracking (MLflow) e promoção de modelos |
-| `src/api/` | API FastAPI de serving com monitoramento |
-| `src/api_agent/` | Agente conversacional (Gemini + RAG) |
-| `data/raw/` | CSVs brutos do INMET (por ano) |
-| `data/spec/` | Parquet com features por município |
-| `scripts/` | Smoke tests e scripts de automação |
-
----
-
 ## Pré-requisitos
 
 | Ferramenta | Versão | Para quê |
@@ -99,8 +82,6 @@ Cobertura mínima exigida no CI: **60%**.
 ---
 
 # Arquitetura do WeatherOps
-
-O **WeatherOps** é uma plataforma de previsão meteorológica que vai desde a coleta de dados brutos até a entrega de previsões por API e por um agente conversacional inteligente.
 
 O projeto é dividido em **4 setores principais**:
 
